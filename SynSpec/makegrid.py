@@ -14,6 +14,7 @@
 #
 # VERSION HISTORY:
 # Created: 12/02/2016 (DJS)
+# Made the wave array explicitly have the type float64: 19/02/2016
 #
 ######################################################################################
 
@@ -42,9 +43,9 @@ class grid():
         f = -(1 + 2 * R) / (1 - 2 *R)
         n_points = (np.floor( (np.log(wave_end/wave_start)) / (np.log( f )))) + 1
         
-        wave = np.arange(n_points)
+        wave = np.arange(n_points, dtype=np.float64)
         wave.fill(wave_start)
-        factor = f**np.arange(n_points)
+        factor = f**np.arange(n_points, dtype=np.float64)
         wave = wave*factor
         
         # Checked against IDL version
@@ -88,5 +89,3 @@ class grid():
 
 #test = grid(edges=True)
 #print test.wave
-
-       

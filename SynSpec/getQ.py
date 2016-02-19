@@ -18,13 +18,12 @@
 ######################################################################################''
 
 from molDB import molProps
-import numpy as np
 import csv
-from pylab import *
+import numpy as np
+import sys
+
 from scipy.interpolate import interp1d
-from scipy.signal.bsplines import cubic
 from scipy.interpolate import InterpolatedUnivariateSpline
-import time
 
 
 def getQ(molno, isono, ll_name, Temp):

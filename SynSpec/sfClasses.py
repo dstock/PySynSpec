@@ -14,6 +14,7 @@
 #
 # VERSION HISTORY:
 # Created: 04/02/2016 (DJS)
+# V0.001: Can create Tau Profiles for HITRAN04 linelists 18/02/2016
 #
 ######################################################################################
 
@@ -26,15 +27,16 @@ from getQ import getQ
 import pickle
 from math import floor, pi
 from scipy.io import readsav
+import numpy.ma as ma
 
 from globals import HT04_globals
 import SynspecSettings as ss
 from create_filename import create_filename
 from makegrid import grid
 import matplotlib.pyplot as plt
+from b_nu import B_nu
 
 c2 = (apc.h.cgs.value*apc.c.cgs.value)/apc.k_B.cgs.value
- 
  
  
  
@@ -213,9 +215,10 @@ class Spectrum:
         """ This function will set up a default wavelength array (in wavenumbers) as well as a container for actual spectra """
         self.grid = grid(wave_start, wave_end, v_turb, resolution, oversample, xtitle, ytitle, edges)
         # This makes sure that when we make a spectrum object with no args, it defaults to containing the basic wave grid.
-
+        self.spectrumtype='init'
+        
     
-    def get_tau(self, molno, isono, ll_name, Temp, regen=False):
+    def get_tau(self, molno, isono, ll_name, Temp, regen=False, vturb = ss.vturb):
         """General form of Jan's solution to this problem:
             make a 2d array of strengths, delta_nu's and line centers
             make a 2d tau array with form (npoints * nlines) where the npoints represent the array of frequencies
@@ -228,117 +231,170 @@ class Spectrum:
             do e(-tau)
             do a bit of renomalization
             all done"""
+        
+        self.Temp = Temp
+        
+        if self.spectrumtype != 'init':
+            sys.exit('This spectrum object is not blank.')
+        
+        #lets make sure that we haven't done this before..
+        filename = create_filename(molno, isono, ll_name, 'tau', vturb)
+        
+        if os.path.isfile(filename) == False or regen == True:
+            
+            thislinelist = SpecificLineList(molno, isono, ll_name, regen)
+            thislinelist.calc_specifics(Temp)
+            #thislinelist.ll_reverse()
+            
+            print thislinelist.strength.size, type(thislinelist.strength.size)
+            print self.grid.n_points
+            print  type(thislinelist.strength)
     
-        thislinelist = SpecificLineList(molno, isono, ll_name, regen)
-        thislinelist.calc_specifics(Temp)
-        #thislinelist.ll_reverse()
+            mastertau = self.grid.flux
+            mastertau[:] = 0.0
+            
+            delta_nud = thislinelist.wave * vturb * 1e5 
         
-        print thislinelist.strength.size, type(thislinelist.strength.size)
-        print self.grid.n_points
-        print  type(thislinelist.strength)
-
-        mastertau = self.grid.flux
-        mastertau[:] = 0.0
-        
-        delta_nud = thislinelist.wave * ss.vturb * 1e5 
+            # assume that every incoming linelist is sorted.
+            #split spectrum into chunks of say 100 lines
+            #lets just make it work - no overlaps yet.
+            
+            
+            nlines=100
+            cycle = 0
+            iters = floor( thislinelist.strength.size/nlines )
+            
+            print thislinelist.strength.size
+            print floor(thislinelist.strength.size/nlines)
+            #sys.exit()
+            a_size=nlines
     
-        # assume that every incoming linelist is sorted.
-        #split spectrum into chunks of say 100 lines
-        #lets just make it work - no overlaps yet.
-        
-        
-        nlines=100
-        cycle = 0
-        iters = floor( thislinelist.strength.size/nlines )
-        
-        print thislinelist.strength.size
-        print floor(thislinelist.strength.size/nlines)
-        #sys.exit()
-        a_size=nlines
-
-        thisgrid = self.grid.freq[::-1]
-        
-        for cycle in range(int(iters)+1):
-            print 'cycle=', cycle
-
-            print 'line number range=', (cycle)*nlines, (cycle+1)*nlines, thislinelist.strength.size
-
-            if cycle == int(iters):
-                print 'in here'
-                thislooplines_s = thislinelist.strength[(cycle)*nlines:]
-                thislooplines_w = thislinelist.freq[(cycle)*nlines:]
-                thisdeltanu = delta_nud[(cycle)*nlines:]
+            thisgrid = self.grid.freq[::-1]
+            
+            for cycle in range(int(iters)+1):
+                print 'cycle=', cycle
+    
+                print 'line number range=', (cycle)*nlines, (cycle+1)*nlines, thislinelist.strength.size
+    
+                if cycle == int(iters):
+                    print 'in here'
+                    thislooplines_s = thislinelist.strength[(cycle)*nlines:]
+                    thislooplines_w = thislinelist.freq[(cycle)*nlines:]
+                    thisdeltanu = delta_nud[(cycle)*nlines:]
+                    
+                    a_size = thislooplines_s.size
+                else:
+                    thislooplines_s = thislinelist.strength[(cycle)*nlines:(cycle+1)*nlines]
+                    thislooplines_w = thislinelist.freq[(cycle)*nlines:(cycle+1)*nlines]
+                    thisdeltanu = delta_nud[(cycle)*nlines:(cycle+1)*nlines]
                 
-                a_size = thislooplines_s.size
-            else:
-                thislooplines_s = thislinelist.strength[(cycle)*nlines:(cycle+1)*nlines]
-                thislooplines_w = thislinelist.freq[(cycle)*nlines:(cycle+1)*nlines]
-                thisdeltanu = delta_nud[(cycle)*nlines:(cycle+1)*nlines]
+                
+                print 'wavelength range=', thislooplines_w[0], thislooplines_w[-1]
+                
+                if cycle==0:
+                    linerange = [thislooplines_w[0],thislooplines_w[-1] ]
+                else:
+                    linerange = [thislinelist.freq[(cycle*nlines)-1], thislooplines_w[-1] ]
+                
+                print 'linerange=', linerange
+                #wavecov = linerange[1] - linerange[0]
+                
+                print self.grid.freq[0], self.grid.freq[-1]
+                
+                if cycle==0:
+                    thiswavegrid = thisgrid[(thisgrid < linerange[1])]
+                elif cycle==int(iters):
+                    thiswavegrid = thisgrid[(thisgrid > linerange[0])]
+                else:
+                    thiswavegrid = thisgrid[(thisgrid > linerange[0]) & (thisgrid < linerange[1])]
+               
+                          
+                print 'Nlines, Npoints', thislooplines_s.size, thiswavegrid.size
             
-            
-            print 'wavelength range=', thislooplines_w[0], thislooplines_w[-1]
-            
-            if cycle==0:
-                linerange = [thislooplines_w[0],thislooplines_w[-1] ]
-            else:
-                linerange = [thislinelist.freq[(cycle*nlines)-1], thislooplines_w[-1] ]
-            
-            print 'linerange=', linerange
-            #wavecov = linerange[1] - linerange[0]
-            
-            print self.grid.freq[0], self.grid.freq[-1]
-            
-            if cycle==0:
-                thiswavegrid = thisgrid[(thisgrid < linerange[1])]
-            elif cycle==int(iters):
-                thiswavegrid = thisgrid[(thisgrid > linerange[0])]
-            else:
-                thiswavegrid = thisgrid[(thisgrid > linerange[0]) & (thisgrid < linerange[1])]
-           
-                      
-            print 'Nlines, Npoints', thislooplines_s.size, thiswavegrid.size
+                
+                ff2d = np.vstack([thislooplines_s]*thiswavegrid.size)
+                lines2d = np.vstack([thislooplines_w]*thiswavegrid.size)
+                dnu_2d = np.vstack([thisdeltanu]*thiswavegrid.size)
+                wavegrid2d = np.transpose(np.vstack([thiswavegrid]*a_size))
+                
+                temp = wavegrid2d - lines2d
+                temp = temp/dnu_2d
+                temp = temp**2.0
+                temp = -temp
+                temp = np.exp( temp )
+                
+                mask = ma.where(temp < 500)
+                                
+                temp[mask] = temp[mask] * ff2d[mask]
+                temp[mask] = temp[mask] / dnu_2d[mask]
+                temp[mask] = temp[mask] / np.sqrt(pi)
+                
+                thistau = np.sum(temp, axis=1)
+                
+                if cycle==0:
+                    mastertau[(thisgrid < linerange[1])] = thistau
+                elif cycle==int(iters):
+                    mastertau[(thisgrid > linerange[0]) ] = thistau
+                else:    
+                    mastertau[(thisgrid > linerange[0]) & (thisgrid < linerange[1])] = thistau
+                
         
-            
-            ff2d = np.vstack([thislooplines_s]*thiswavegrid.size)
-            lines2d = np.vstack([thislooplines_w]*thiswavegrid.size)
-            dnu_2d = np.vstack([thisdeltanu]*thiswavegrid.size)
-            wavegrid2d = np.transpose(np.vstack([thiswavegrid]*a_size))
-            
-            temp = wavegrid2d - lines2d
-            temp = temp/dnu_2d
-            temp = temp**2.0
-            temp = -temp
-            temp = np.exp( temp )
-            
-            #TODO: Mask crap here
-            
-            temp = temp * ff2d
-            temp = temp / dnu_2d
-            temp = temp / np.sqrt(pi)
-            
-            thistau = np.sum(temp, axis=1)
-            
-            if cycle==0:
-                mastertau[(thisgrid < linerange[1])] = thistau
-            elif cycle==int(iters):
-                mastertau[(thisgrid > linerange[0]) ] = thistau
-            else:    
-                mastertau[(thisgrid > linerange[0]) & (thisgrid < linerange[1])] = thistau
-            
+            self.tau = mastertau[::-1] #The -1 reverses the array to align it with the um wavelength grid
+            outfile = open(filename,'w')
+            pickle.dump(mastertau, outfile)
+            outfile.close
+        else:
+            infile = open(filename,'r') #Can only get to this block if the .pickle file exists. Restore it, its faster.
+            mastertau = pickle.load(infile)
+            infile.close
+            self.tau = mastertau[::-1] #The -1 reverses the array to align it with the um wavelength grid
+            print 'restored tau pickle'           
+                
+        #jan = readsav('/home/dstock/sf/idl/code/templates/CO2/626/HITRAN04/v3.000/gauss/tau/CO2_626_HITRAN04_v3.000_NTH_gauss_T100.000.xdr')
+        #plt.plot(self.grid.wave, mastertau[::-1]*1.1, 'b')#, jan.wave, jan.tau, 'r')
+        #plt.show()
+        
+        self.spectrumtype='tau'
     
+    
+    
+    
+    def do_rt(self, N):
+        'Sort out the radiative transfer mess.'
         
-        jan = readsav('/home/dstock/sf/idl/code/templates/CO2/626/HITRAN04/v3.000/gauss/tau/CO2_626_HITRAN04_v3.000_NTH_gauss_T100.000.xdr')
-        plt.plot(self.grid.wave, mastertau[::-1]*1.1, 'b', jan.wave, jan.tau, 'r')
+        if self.spectrumtype != 'tau':
+            sys.exit('Wrong type of spectrum input to do_rt, expected tau, found'+self.spectrumtype)
+        
+        I_back = Spectrum()
+        S_func = Spectrum()
+        
+        I_back.grid.flux = B_nu(I_back.grid.wave, 3e3)
+        S_func.grid.flux = B_nu(I_back.grid.wave, self.Temp)
+        
+        thistau = self.tau*N
+        
+        I_0 = S_func.grid.flux + np.exp(-thistau)*(I_back.grid.flux-S_func.grid.flux)
+        
+        masternorm = I_0/I_back.grid.flux
+   
+        masteremi = S_func.grid.flux * (1e0 - np.exp(thistau))
+        
+        print S_func.grid.flux.shape
+        
+        print thistau.shape
+        
+        print masteremi.shape
+        
+        # This is super-duper wrong for reasons that are not entirely clear to me.
+        
+        plt.plot(self.grid.wave, masternorm)
         plt.show()
-    
-    
-    
-    
 
 
 
 data = Spectrum()
-data.get_tau(2,1,'HITRAN04',100, regen=False)
+data.get_tau(2,1,'HITRAN04',100.0, regen=False)
+data.do_rt(10**15)
     
     
     

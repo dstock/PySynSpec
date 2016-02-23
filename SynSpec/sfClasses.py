@@ -34,6 +34,7 @@ import SynspecSettings as ss
 from create_filename import create_filename
 from makegrid import grid
 import matplotlib.pyplot as plt
+from scipy import signal
 from b_nu import B_nu
 
 c2 = (apc.h.cgs.value*apc.c.cgs.value)/apc.k_B.cgs.value
@@ -376,26 +377,71 @@ class Spectrum:
         I_0 = S_func.grid.flux + np.exp(-thistau)*(I_back.grid.flux-S_func.grid.flux)
         
         masternorm = I_0/I_back.grid.flux
-   
         masteremi = S_func.grid.flux * (1e0 - np.exp(thistau))
+        # This turned out not to be wrong, it was just friday afternoon and I wasn't thinking clearly.
+               
+        self.norm = masternorm
+        self.emi = masteremi
+        self.spectrumtype = 'RT'
         
-        print S_func.grid.flux.shape
+    def regrid(self, resolution=ss.resolution, oversample=ss.oversample):
+        if self.spectrumtype != 'RT':
+            sys.exit('Wrong type of spectrum input to do_rt, expected RT, found'+self.spectrumtype)
         
-        print thistau.shape
+        #create a wavegrid with the correct resolution:
+        outspec = Spectrum(resolution=resolution)
+        #then we map the calculated spectrum (i.e. that contained in the 'self' on which this method operates
+        # onto this new spectral grid, and add the new spectral grid wave and flux to the original spectrum object.
+        # this way our output objects will always have a copy of their wavegrid.
         
-        print masteremi.shape
+        #this takes two steps: 1) smooth the output to the right R, 2) resample the smoothed grid onto the output wavegrid.                        
         
-        # This is super-duper wrong for reasons that are not entirely clear to me.
+        #Steps: make kernel, convolve data with kernel, regrid to smaller grid.
         
-        plt.plot(self.grid.wave, masternorm)
-        plt.show()
+        #Jans kernel code: (assuming a constant resolution grid..)
+        
+        # At this stage, we should have at least a grid of constant resolution
+        x = self.grid.wave
+        n= np.size(self.grid.wave)
 
+        # Make the basic convolution kernel. This is the same for all but one
+        # method. 
+        
+        w_r = x[n/2]
+        sigma = (w_r/float(resolution))/(2e0 * np.sqrt(2e0*np.log(2)))
+        mm = np.finfo(float).tiny
+        sigma_cut = np.sqrt(-2.0 * np.log(mm))
+        idx_gauss = x[(x > w_r - sigma_cut*sigma) & (x <= w_r + sigma_cut*sigma)]
+        n_gauss = np.size(idx_gauss)
+        idx_gauss = np.arange(n_gauss) - n_gauss/2 + n/2
+        new = (x[idx_gauss]-w_r)/sigma
+        
+        ww = np.exp(-5e-1 * new**2)/(np.sqrt(2.0*np.pi)*sigma)
+
+        # Confirmed kernel matches Jan's. - Step one
+        #kernel = readsav('/home/dstock/sf/idl/code/kernel.xdr')
+        #plt.plot(ww, 'b', kernel.ww, 'ro' )
+        #plt.show()
+        
+        filtered = signal.fftconvolve(self.norm, ww, 'same')/sum(ww)
+        print np.size(filtered)
+        print np.size(self.grid.wave)
+        
+        #Signal in 'filtered' matches the line shape produced by IDL code exactly. Also very fast. - Step two
+              
+                                
+        jan = readsav('/home/dstock/sf/idl/code/templates/CO2/626/HITRAN04/v3.000/gauss/templates/R120.00/CO2_626_HITRAN04_v3.000_NTH_gauss_T100.000_N15.000_R120.00_O2.xdr')
+        wave = readsav('/home/dstock/sf/idl/templates/masters/wave_R120.00_O2_umstart_0.350000_umend_3000.000000.xdr')
+        plt.plot(self.grid.wave, filtered, 'r', wave.outgrid, jan.norm, 'b')
+        plt.show()
+        
+        
 
 
 data = Spectrum()
 data.get_tau(2,1,'HITRAN04',100.0, regen=False)
 data.do_rt(10**15)
-    
+data.regrid(resolution=120, oversample=2)    
     
     
     

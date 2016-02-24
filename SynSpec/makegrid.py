@@ -15,6 +15,7 @@
 # VERSION HISTORY:
 # Created: 12/02/2016 (DJS)
 # Made the wave array explicitly have the type float64: 19/02/2016
+# Corrected such that wave grids with arbitrary resolutions actually work
 #
 ######################################################################################
 
@@ -38,10 +39,20 @@ class grid():
         to be the key parameter.  I have had to remove the option to return just a grid. Always an
         object now."""
         
-        resolution = apc.c.cgs.value/(v_turb*1.0e5)
-        R = resolution * oversample
-        f = -(1 + 2 * R) / (1 - 2 *R)
+        if resolution == ss.resolution:
+            resolution = apc.c.cgs.value/(v_turb*1.0e5)
+        # Behaviour as follows:
+        # If resolution is set to be other than default value, it is used (i.e. making output grids)
+        # If resolution is left at default value, we recalculate it based on the default v_turb (i.e. making default grid)
+                    
+        
+        R = np.float(resolution) * np.float(oversample)
+        f = -(1.0 + 2.0 * R) / (1.0 - 2.0 * R)
         n_points = (np.floor( (np.log(wave_end/wave_start)) / (np.log( f )))) + 1
+        
+        #print 'R: ', R, ' f: ', f, ' top:', (np.log(wave_end/wave_start)), ' bottom: ', np.log(f)
+        
+        #print 'makegrid n: ',n_points, ' resolution: ', resolution
         
         wave = np.arange(n_points, dtype=np.float64)
         wave.fill(wave_start)

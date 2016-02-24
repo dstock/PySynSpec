@@ -15,6 +15,13 @@
 # VERSION HISTORY:
 # Created: 04/02/2016 (DJS)
 # V0.001: Can create Tau Profiles for HITRAN04 linelists 18/02/2016
+# V0.01: Can make output templates whoch match IDL versions for arbitrary
+#        resolutions, v_turbs, and linelists from HITRAN04 database.
+#        The line chunking routine in the tau calculation is very basic
+#        and needs updating and steamlining. In particular the leading 
+#        chunk of each wavelength grid is an arbitrarily huge array of 
+#        zeros which we're still handling.However it seems to be correct.
+#        Extensively tested using CO 626 (molno=2, isono=1).
 #
 ######################################################################################
 
@@ -35,6 +42,7 @@ from create_filename import create_filename
 from makegrid import grid
 import matplotlib.pyplot as plt
 from scipy import signal
+from scipy import interpolate
 from b_nu import B_nu
 
 c2 = (apc.h.cgs.value*apc.c.cgs.value)/apc.k_B.cgs.value
@@ -239,7 +247,7 @@ class Spectrum:
             sys.exit('This spectrum object is not blank.')
         
         #lets make sure that we haven't done this before..
-        filename = create_filename(molno, isono, ll_name, 'tau', vturb)
+        filename = create_filename(molno, isono, ll_name, 'tau', vturb, Temp=self.Temp)
         
         if os.path.isfile(filename) == False or regen == True:
             
@@ -265,8 +273,8 @@ class Spectrum:
             cycle = 0
             iters = floor( thislinelist.strength.size/nlines )
             
-            print thislinelist.strength.size
-            print floor(thislinelist.strength.size/nlines)
+            #print thislinelist.strength.size
+            #print floor(thislinelist.strength.size/nlines)
             #sys.exit()
             a_size=nlines
     
@@ -278,11 +286,9 @@ class Spectrum:
                 print 'line number range=', (cycle)*nlines, (cycle+1)*nlines, thislinelist.strength.size
     
                 if cycle == int(iters):
-                    print 'in here'
                     thislooplines_s = thislinelist.strength[(cycle)*nlines:]
                     thislooplines_w = thislinelist.freq[(cycle)*nlines:]
                     thisdeltanu = delta_nud[(cycle)*nlines:]
-                    
                     a_size = thislooplines_s.size
                 else:
                     thislooplines_s = thislinelist.strength[(cycle)*nlines:(cycle+1)*nlines]
@@ -300,7 +306,7 @@ class Spectrum:
                 print 'linerange=', linerange
                 #wavecov = linerange[1] - linerange[0]
                 
-                print self.grid.freq[0], self.grid.freq[-1]
+                #print self.grid.freq[0], self.grid.freq[-1]
                 
                 if cycle==0:
                     thiswavegrid = thisgrid[(thisgrid < linerange[1])]
@@ -389,7 +395,7 @@ class Spectrum:
             sys.exit('Wrong type of spectrum input to do_rt, expected RT, found'+self.spectrumtype)
         
         #create a wavegrid with the correct resolution:
-        outspec = Spectrum(resolution=resolution)
+        outspec = Spectrum(resolution=resolution, oversample=oversample)
         #then we map the calculated spectrum (i.e. that contained in the 'self' on which this method operates
         # onto this new spectral grid, and add the new spectral grid wave and flux to the original spectrum object.
         # this way our output objects will always have a copy of their wavegrid.
@@ -424,27 +430,55 @@ class Spectrum:
         #plt.show()
         
         filtered = signal.fftconvolve(self.norm, ww, 'same')/sum(ww)
-        print np.size(filtered)
-        print np.size(self.grid.wave)
+        print 'new grid size:', np.size(filtered), np.size(self.grid.wave)
         
+        self.smoothednorm = filtered
+           
         #Signal in 'filtered' matches the line shape produced by IDL code exactly. Also very fast. - Step two
-              
-                                
-        jan = readsav('/home/dstock/sf/idl/code/templates/CO2/626/HITRAN04/v3.000/gauss/templates/R120.00/CO2_626_HITRAN04_v3.000_NTH_gauss_T100.000_N15.000_R120.00_O2.xdr')
-        wave = readsav('/home/dstock/sf/idl/templates/masters/wave_R120.00_O2_umstart_0.350000_umend_3000.000000.xdr')
-        plt.plot(self.grid.wave, filtered, 'r', wave.outgrid, jan.norm, 'b')
-        plt.show()
+        
+        out_flux = interpolate.griddata(self.grid.wave, filtered, outspec.grid.wave, method='linear')      
+        print 'New grid size:', np.size(out_flux), np.size(outspec.grid.wave) 
+        
+        self.templatewave = outspec.grid.wave
+        self.templatenorm= out_flux
         
         
+class Template:
+    def __init__(self, molno, isono, Temp, N, regen=False, resolution=ss.resolution, oversample=ss.oversample, ll_name='HITRAN04', v_turb=ss.vturb):
+        #First of all lets see if we have made the requested template before
+        filename = create_filename(molno, isono, ll_name, 'template', vturb=v_turb, Temp=Temp)
+        
+        if os.path.isfile(filename) == False or regen == True:
+            #Stuff to (re)generate template
+            data = Spectrum()
+            data.get_tau(molno,isono,ll_name,Temp, regen)
+            data.do_rt(N)
+            data.regrid(resolution=resolution, oversample=oversample)    
+            self.data = data
+            
+            outfile = open(filename,'w')
+            pickle.dump(data, outfile)
+            outfile.close
+            
+        else:
+            infile = open(filename,'r') #Can only get to this block if the .pickle file exists. Restore it, its faster.
+            self.data = pickle.load(infile)
+            infile.close
+            print 'restored template pickle'
+     
 
 
-data = Spectrum()
-data.get_tau(2,1,'HITRAN04',100.0, regen=False)
-data.do_rt(10**15)
-data.regrid(resolution=120, oversample=2)    
+
+template = Template(2,1,1000.0, 10**18.5, ll_name='HITRAN04', regen=True, resolution=120.0)
+
+
     
-    
-    
+jan = readsav('/home/dstock/sf/idl/code/templates/CO2/626/HITRAN04/v3.000/gauss/templates/R120.00/CO2_626_HITRAN04_v3.000_NTH_gauss_T1000.000_N18.500_R120.00_O2.xdr')
+wave = readsav('/home/dstock/sf/idl/templates/masters/wave_R120.00_O2_umstart_0.350000_umend_3000.000000.xdr')
+plt.plot(template.data.templatewave, template.data.templatenorm, 'r', wave.outgrid, jan.norm, 'b')#, data.grid.wave, data.smoothednorm, 'g')
+plt.xlim(0,20)
+
+plt.show()    
     
     
     

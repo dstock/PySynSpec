@@ -26,11 +26,11 @@ def B_nu( wave, T, engelke=0 ):
     
         #Check that wave and T are both floats:
     stat1 = wave.dtype == 'float64'   
-    print wave.dtype, stat1
+    #print wave.dtype, stat1
     #Weird, because I want wave to be an numpy array its type is in a string
     stat2 = type(T) == float
-    print type(T), stat2
-    if stat2 == False or stat2 == False:
+    #print type(T), stat2
+    if stat1 == False or stat2 == False:
         sys.exit('Types not correct in function B_nu') # Kill it if wrong
 
     if engelke == 1:

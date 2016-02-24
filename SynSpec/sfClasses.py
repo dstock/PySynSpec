@@ -157,7 +157,7 @@ class SpecificLineList(LineList):
             E_temp = -1.0*self.epp * c2 / 296.0
             w_temp = -1.0*self.wave * c2 / 296.0
             self.strength = np.array([x.strength for x in lines]) * (props.Q296/props.abund) / (np.exp(E_temp) * (1.0-np.exp(w_temp)) )
-            print np.array([x.strength for x in lines]) 
+            #print np.array([x.strength for x in lines]) 
             spec = np.array([x.spec for x in lines])
             iso = np.array([x.iso for x in lines])
         
@@ -195,21 +195,21 @@ class SpecificLineList(LineList):
                 
      
                 E_temp = -1.0 * self.epp * c2 / Temp
-                print E_temp
+                #print E_temp
                 w_temp = -1.0 * self.wave * c2 / Temp
-                print w_temp
+                #print w_temp
                 self.strength = self.strength * (props.abund/ Q) * (np.exp(E_temp) * (1.0-np.exp(w_temp))) * apc.c.cgs.value
                 #I have no idea why Jan multiplies by C here, but he does, so lets copy it.
                 
                 strengths_jan = readsav('/home/dstock/sf/idl/code/ff.xdr')
                 
-                print "My Calcs:", self.strength
-                print 'My epp', self.epp
-                print "Jan's Calcs:", strengths_jan.ff
+                #print "My Calcs:", self.strength
+                #print 'My epp', self.epp
+                #print "Jan's Calcs:", strengths_jan.ff
 
-                print self.strength[0:12]/strengths_jan.ff
+                #print self.strength[0:12]/strengths_jan.ff
 
-                print strengths_jan.ff[0]/self.strength[0]
+                #print strengths_jan.ff[0]/self.strength[0]
 
                 #sys.exit('get outta town')
                 
@@ -446,7 +446,7 @@ class Spectrum:
 class Template:
     def __init__(self, molno, isono, Temp, N, regen=False, resolution=ss.resolution, oversample=ss.oversample, ll_name='HITRAN04', v_turb=ss.vturb):
         #First of all lets see if we have made the requested template before
-        filename = create_filename(molno, isono, ll_name, 'template', vturb=v_turb, Temp=Temp)
+        filename = create_filename(molno, isono, ll_name, 'template', vturb=v_turb, Temp=Temp, N=N, resolution=resolution)
         
         if os.path.isfile(filename) == False or regen == True:
             #Stuff to (re)generate template
@@ -469,7 +469,7 @@ class Template:
 
 
 
-template = Template(2,1,1000.0, 10**18.5, ll_name='HITRAN04', regen=True, resolution=120.0)
+template = Template(2,1,1000.0, 10**18.5, ll_name='HITRAN04', regen=False, resolution=120.0)
 
 
     

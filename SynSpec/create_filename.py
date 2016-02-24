@@ -19,6 +19,7 @@
 ######################################################################################
 
 import os
+import numpy as np
 
 import SynspecSettings as ss
 from molDB import molProps
@@ -27,7 +28,7 @@ from molDB import molProps
 
 def create_filename(molno, isono, ll_name, switch, vturb=ss.vturb, want_thermal=0, 
                     wavestart=ss.wavestart, waveend=ss.waveend, profile=ss.profile, 
-                    resolution=ss.resolution, oversample=ss.oversample, Temp=1e3):
+                    resolution=ss.resolution, oversample=ss.oversample, Temp=1e3, N=1e18):
     # Also: chunkID,  N
     # Jan's version used all of these - I am choosing only to include the ones I need so far
     # Not sure about the initialization of Temp here. I am going to make it such that it never gets 
@@ -79,7 +80,7 @@ def create_filename(molno, isono, ll_name, switch, vturb=ss.vturb, want_thermal=
             totaldir = profdir + '/' + 'templates/'
             if os.path.isdir(totaldir) == False: #I think you could use an try/catch here, but this is neater.
                 os.makedirs(totaldir)            
-            filename  = totaldir+filename+'.pickle'
+            filename  = totaldir+filename+'_N'+str(np.log10(N))+'_R'+str(resolution)+'.pickle'
     
         
     if switch == 'masterwno': 

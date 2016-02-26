@@ -275,3 +275,114 @@ class Spectrum:
         self.templatewave = outspec.grid.wave
         self.templatenorm= out_flux
         
+    def get_tau2(self, molno, isono, ll_name, Temp, regen=False, vturb = ss.vturb):
+        #Fixing the problems of the original get_tau method.
+        # 1: Chunks with weird sizes and lots of zeros.
+        # 2: Save/ restore the chunks.
+        # 3: work out the necessary overlap region.
+        
+        self.Temp = Temp
+        
+        if self.spectrumtype != 'init':
+            sys.exit('This spectrum object is not blank.')
+        
+        #lets make sure that we haven't done this before..
+        filename = create_filename(molno, isono, ll_name, 'tau', vturb, Temp=self.Temp)
+        
+        if os.path.isfile(filename) == False or regen == True:
+            
+            thislinelist = SpecificLineList(molno, isono, ll_name, regen)
+            thislinelist.calc_specifics(Temp)
+    
+            mastertau = self.grid.flux
+            mastertau[:] = 0.0
+            
+            delta_nud = thislinelist.wave * vturb * 1e5 
+        
+            # assume that every incoming linelist is sorted.
+            #split spectrum into chunks of say 100 lines            
+            
+            nlines=100
+            cycle = 0
+            iters = floor( thislinelist.strength.size/nlines )
+            
+            over = 2e9
+            
+            #print thislinelist.strength.size
+            #print floor(thislinelist.strength.size/nlines)
+            #sys.exit()
+            a_size=nlines
+    
+            thisgrid = self.grid.freq[::-1]
+            
+            for cycle in range(int(iters)+1):
+                print 'cycle=', cycle
+    
+                print 'line number range=', (cycle)*nlines, (cycle+1)*nlines, thislinelist.strength.size
+    
+                thislooplines_s = thislinelist.strength[(cycle)*nlines: (cycle+1)*nlines]
+                thislooplines_w = thislinelist.freq[(cycle)*nlines: (cycle+1)*nlines]
+                thisdeltanu = delta_nud[(cycle)*nlines: (cycle+1)*nlines]
+                
+                a_size =  thislooplines_s.size
+                               
+                print 'wavelength range=', thislooplines_w[0], thislooplines_w[-1]
+
+                linerange = [thislooplines_w[0], thislooplines_w[-1] ]
+                
+                print 'linerange=', linerange
+                #wavecov = linerange[1] - linerange[0]
+                
+                #print self.grid.freq[0], self.grid.freq[-1]
+
+                #if cycle==0: sys.exit()
+                
+
+                thiswavegrid = thisgrid[(thisgrid > linerange[0]-over) & (thisgrid < linerange[1]+over)]
+               
+                          
+                print 'Nlines, Npoints', thislooplines_s.size, thiswavegrid.size
+            
+                if thiswavegrid.size == 0:
+                    continue
+                else:        
+                    ff2d = np.vstack([thislooplines_s]*thiswavegrid.size)
+                    lines2d = np.vstack([thislooplines_w]*thiswavegrid.size)
+                    dnu_2d = np.vstack([thisdeltanu]*thiswavegrid.size)
+                    wavegrid2d = np.transpose(np.vstack([thiswavegrid]*a_size))
+                    
+                    temp = wavegrid2d - lines2d
+                    temp = temp/dnu_2d
+                    temp = temp**2.0
+                    temp = -temp
+                    temp = np.exp( temp )
+                    
+                    mask = ma.where(temp < 500)
+                                    
+                    temp[mask] = temp[mask] * ff2d[mask]
+                    temp[mask] = temp[mask] / dnu_2d[mask]
+                    temp[mask] = temp[mask] / np.sqrt(pi)
+                    
+                    thistau = np.sum(temp, axis=1)
+                    
+                    
+                    mastertau[(thisgrid > linerange[0]-over) & (thisgrid < linerange[1]+over)] += thistau
+                
+        
+            self.tau = mastertau[::-1] #The -1 reverses the array to align it with the um wavelength grid
+            outfile = open(filename,'w')
+            pickle.dump(mastertau, outfile)
+            outfile.close
+        else:
+            infile = open(filename,'r') #Can only get to this block if the .pickle file exists. Restore it, its faster.
+            mastertau = pickle.load(infile)
+            infile.close
+            self.tau = mastertau[::-1] #The -1 reverses the array to align it with the um wavelength grid
+            print 'restored tau pickle'           
+                
+        #jan = readsav('/home/dstock/sf/idl/code/templates/CO2/626/HITRAN04/v3.000/gauss/tau/CO2_626_HITRAN04_v3.000_NTH_gauss_T100.000.xdr')
+        #plt.plot(self.grid.wave, mastertau[::-1]*1.1, 'b')#, jan.wave, jan.tau, 'r')
+        #plt.show()
+        
+        self.spectrumtype='tau'
+

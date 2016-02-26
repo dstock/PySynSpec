@@ -47,7 +47,7 @@ class Template:
         if os.path.isfile(filename) == False or regen == True:
             #Stuff to (re)generate template
             data = Spectrum()
-            data.get_tau(molno,isono,ll_name,Temp, regen)
+            data.get_tau2(molno,isono,ll_name,Temp, regen)
             data.do_rt(N)
             data.regrid(resolution=resolution, oversample=oversample)    
             self.data = data
@@ -65,14 +65,21 @@ class Template:
 
 
 
-template = Template(2,1,100.0, 10**18.5, ll_name='HITRAN04', regen=True, resolution=120.0)
+template = Template(3,1,1000.0, 10**18.5, ll_name='HITRAN04', regen=False, resolution=120.0)
 
 
     
-jan = readsav('/home/dstock/sf/idl/code/templates/CO2/626/HITRAN04/v3.000/gauss/templates/R120.00/CO2_626_HITRAN04_v3.000_NTH_gauss_T1000.000_N18.500_R120.00_O2.xdr')
-wave = readsav('/home/dstock/sf/idl/templates/masters/wave_R120.00_O2_umstart_0.350000_umend_3000.000000.xdr')
-plt.plot(template.data.templatewave, template.data.templatenorm, 'r', wave.outgrid, jan.norm, 'b')#, data.grid.wave, data.smoothednorm, 'g')
-plt.xlim(0,20)
+#jan = readsav('/home/dstock/sf/idl/code/templates/CO2/626/HITRAN04/v3.000/gauss/templates/R120.00/CO2_626_HITRAN04_v3.000_NTH_gauss_T1000.000_N18.500_R120.00_O2.xdr')
+#wave = readsav('/home/dstock/sf/idl/templates/masters/wave_R120.00_O2_umstart_0.350000_umend_3000.000000.xdr')
+
+#jan = readsav('/home/dstock/sf/idl/code/templates/CO2/626/HITRAN04/v3.000/gauss/tau/CO2_626_HITRAN04_v3.000_NTH_gauss_T1000.000.xdr')
+
+#plt.plot(template.data.grid.wave, template.data.tau, 'r')#, jan.wave, jan.tau, 'b')#, data.grid.wave, data.smoothednorm, 'g')
+
+plt.plot(template.data.templatewave, template.data.templatenorm)
+
+#plt.plot(template.data.tau/jan.tau)
+plt.xlim(0,500)
 
 plt.show()    
     

@@ -8,7 +8,7 @@
 # (X) New file
 #
 # COMMENTS:
-# This file defines the various classes needed to implement spectrafactory.
+# This file defines the final template object containing all of the calculated quantities.
 #
 #
 #
@@ -54,12 +54,12 @@ class Template:
             
             outfile = open(filename,'w')
             pickle.dump(data, outfile)
-            outfile.close
+            outfile.close()
             
         else:
             infile = open(filename,'r') #Can only get to this block if the .pickle file exists. Restore it, its faster.
             self.data = pickle.load(infile)
-            infile.close
+            infile.close()
             print 'restored template pickle'
      
 

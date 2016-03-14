@@ -8,7 +8,7 @@
 # (X) New file
 #
 # COMMENTS:
-# This file defines the various classes needed to implement spectrafactory.
+# This file defines the linelist object, along with readers for HITRAN04 and eventually others.
 #
 #
 #
@@ -129,10 +129,11 @@ class SpecificLineList(LineList):
 
                 outfile = open(filename+'.pickle','w')
                 pickle.dump(lines, outfile)
-                outfile.close
+                outfile.close()
             else:
                 infile = open(filename+'.pickle','r') #Can only get to this block if the .pickle file exists. Restore it, its faster.
                 lines = pickle.load(infile)
+                infile.close()
 
             self.wave = np.array([x.wave for x in lines]) # currently this is actually wno
             self.waveum = np.array([x.waveum for x in lines])

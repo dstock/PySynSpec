@@ -8,7 +8,7 @@
 # (X) New file
 #
 # COMMENTS:
-# This file defines the various classes needed to implement spectrafactory.
+# This file defines Spectrum object, which contains wavelength and flux grids.
 #
 #
 #
@@ -182,11 +182,11 @@ class Spectrum:
             self.tau = mastertau[::-1] #The -1 reverses the array to align it with the um wavelength grid
             outfile = open(filename,'w')
             pickle.dump(mastertau, outfile)
-            outfile.close
+            outfile.close()
         else:
             infile = open(filename,'r') #Can only get to this block if the .pickle file exists. Restore it, its faster.
             mastertau = pickle.load(infile)
-            infile.close
+            infile.close()
             self.tau = mastertau[::-1] #The -1 reverses the array to align it with the um wavelength grid
             print 'restored tau pickle'           
                 
@@ -372,11 +372,11 @@ class Spectrum:
             self.tau = mastertau[::-1] #The -1 reverses the array to align it with the um wavelength grid
             outfile = open(filename,'w')
             pickle.dump(mastertau, outfile)
-            outfile.close
+            outfile.close()
         else:
             infile = open(filename,'r') #Can only get to this block if the .pickle file exists. Restore it, its faster.
             mastertau = pickle.load(infile)
-            infile.close
+            infile.close()
             self.tau = mastertau[::-1] #The -1 reverses the array to align it with the um wavelength grid
             print 'restored tau pickle'           
                 

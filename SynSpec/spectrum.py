@@ -38,6 +38,9 @@ import numpy.ma as ma
 import matplotlib.pyplot as plt
 from scipy import signal
 from scipy import interpolate
+import time
+import numdifftools as nd
+
 
 from linelist import SpecificLineList
 import SynspecSettings as ss
@@ -45,6 +48,7 @@ from create_filename import create_filename
 from makegrid import grid
 
 from b_nu import B_nu
+from _dbus_bindings import String
 
 c2 = (apc.h.cgs.value*apc.c.cgs.value)/apc.k_B.cgs.value
                            
@@ -277,8 +281,9 @@ class Spectrum:
         
     def get_tau2(self, molno, isono, ll_name, Temp, regen=False, vturb = ss.vturb):
         #Fixing the problems of the original get_tau method.
-        # 1: Chunks with weird sizes and lots of zeros.
+        # 1: Chunks with weird sizes and lots of zeros. --- Have removed the leading and trailing zeros.
         # 2: Save/ restore the chunks.
+        #  -- How does Jan decide on chunk sizes?
         # 3: work out the necessary overlap region.
         
         self.Temp = Temp
@@ -314,6 +319,36 @@ class Spectrum:
             a_size=nlines
     
             thisgrid = self.grid.freq[::-1]
+            thisfreq = thislinelist.freq
+            thiswave = thislinelist.waveum                      
+            #first = np.vstack((thisgrid, mastertau))
+            #second = np.vstack((thislinelist.freq,thislinelist.strength))
+            
+            #print first.shape, second.shape
+            
+            #t1 = time.clock()
+            #test = np.concatenate([first, second], axis=1)
+            #test2 = np.sort(test, kind="quicksort")
+            #t2=time.clock()
+            #tic = t2-t1
+            
+            freqs_cum = np.cumsum(thisfreq)/np.sum(thisfreq)
+                        
+            # working on finding the breakpoints between the different sets of lines such that we can make a recursive algorithm to split linelists into chunks.
+            dx = np.diff(thisfreq)
+            
+
+            test = n_max(dx, 10)
+            
+            freqs = [thisfreq[x[1]] for x in test]
+            vals = [x[0] for x in test]
+            
+            #print freqs_cum.size, thisfreq[0:-1].size
+            
+            plt.plot(thisfreq, freqs_cum, '-ob', thisfreq[0:-1], dx/np.max(dx), '-or', freqs, vals/np.max(vals), 'og')
+            plt.show()
+            
+            sys.exit()
             
             for cycle in range(int(iters)+1):
                 print 'cycle=', cycle
@@ -336,9 +371,19 @@ class Spectrum:
                 #print self.grid.freq[0], self.grid.freq[-1]
 
                 #if cycle==0: sys.exit()
-                
-
+            
                 thiswavegrid = thisgrid[(thisgrid > linerange[0]-over) & (thisgrid < linerange[1]+over)]
+               
+                test = np.concatenate([thiswavegrid, thislooplines_w])
+                test2 = np.sort(test, kind='quicksort')
+               
+                print thiswavegrid - thislooplines_w[50]
+                print thislooplines_w
+
+                plt.plot(test2, np.exp(-((test2 - thislooplines_w[50])/thisdeltanu[50])**2), "-bo", thislooplines_w[50], 1e0, "ro" )
+                plt.show()
+                
+                sys.exit()
                
                           
                 print 'Nlines, Npoints', thislooplines_s.size, thiswavegrid.size
@@ -386,3 +431,8 @@ class Spectrum:
         
         self.spectrumtype='tau'
 
+
+def n_max(arr, n):
+    indices = arr.ravel().argsort()[-n:]
+    indices = (np.unravel_index(i, arr.shape) for i in indices)
+    return [(arr[i], i) for i in indices]

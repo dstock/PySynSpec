@@ -65,7 +65,7 @@ class Template:
 
 
 
-template = Template(3,1,1000.0, 10**18.5, ll_name='HITRAN04', regen=False, resolution=120.0)
+template = Template(2,1,999.0, 10**18.5, ll_name='HITRAN04', regen=True, resolution=120.0)
 
 
     

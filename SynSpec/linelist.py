@@ -27,7 +27,6 @@
 #
 ######################################################################################
 
-
 import csv
 import astropy.constants as apc
 import numpy as np
@@ -41,8 +40,6 @@ from globals import HT04_globals
 import SynspecSettings as ss
 from create_filename import create_filename
 from getQ import getQ
-
-
 
 c2 = (apc.h.cgs.value*apc.c.cgs.value)/apc.k_B.cgs.value
  

@@ -336,16 +336,43 @@ class Spectrum:
                         
             # working on finding the breakpoints between the different sets of lines such that we can make a recursive algorithm to split linelists into chunks.
             dx = np.diff(thisfreq)
-            
+            length = dx.size
 
             test = n_max(dx, 10)
+           
+            print test
             
+                       
             freqs = [thisfreq[x[1]] for x in test]
+            inds = [x[1] for x in test]
             vals = [x[0] for x in test]
+            
+            print length
+            
+            #print freqs
+            ends =  sorted(inds)
+            
+            #The inds are basically the end of each chunk, so create a new array for the beginnings:
+         
+            starts = [x+1 for x in ends]
+            ends.append(length) # the last line has to be the end of the last chunk
+            starts.insert(0, 0) # the first chunk starts with the first line..
+                        
+            sizes = [ x-y for x,y in zip(ends,starts) ]#(ends-starts)
+            n_points = [np.size(thisgrid[ (thisgrid < thisfreq[x]) & (thisgrid > thisfreq[y]) ]) for x,y in zip(ends,starts)] 
+            #find n points in overall grid between line start[i] and end[i]
+            print sizes
+            print n_points
+            
+            arr_sizes = [x*y for x,y in zip(sizes,n_points)]
+            print arr_sizes
             
             #print freqs_cum.size, thisfreq[0:-1].size
             
             plt.plot(thisfreq, freqs_cum, '-ob', thisfreq[0:-1], dx/np.max(dx), '-or', freqs, vals/np.max(vals), 'og')
+            for x in range(0, len(starts)):
+                plt.plot( [thisfreq[starts[x]], thisfreq[ends[x]]], [0.5, 0.5], 'r')
+                        
             plt.show()
             
             sys.exit()
@@ -435,4 +462,4 @@ class Spectrum:
 def n_max(arr, n):
     indices = arr.ravel().argsort()[-n:]
     indices = (np.unravel_index(i, arr.shape) for i in indices)
-    return [(arr[i], i) for i in indices]
+    return [[arr[i], i[0]] for i in indices]

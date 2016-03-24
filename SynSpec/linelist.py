@@ -200,16 +200,17 @@ class SpecificLineList(LineList):
     def create_chunks(self):
         
         thisfreq = self.freq
-        #first = np.vstack((thisgrid, mastertau))
-        #second = np.vstack((thislinelist.freq,thislinelist.strength))
-        
+               
         chunks = find_chunks(thisfreq)
         
         print 'From Linelist.py'
         print chunks[0]
         print chunks[1]
         
-        
+        #Todo list to finish this function:
+        # Update create filename to do chunks
+        # make chunks - probably append wavelength grid indicies to linelist objects?
+        # Perhaps write out a summary of all the chunks?
 
 
 #testing

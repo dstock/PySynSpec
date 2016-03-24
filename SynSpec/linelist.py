@@ -35,11 +35,13 @@ import os.path
 import pickle
 from scipy.io import readsav
 
+from makegrid import grid
 from line import Line
 from globals import HT04_globals
 import SynspecSettings as ss
 from create_filename import create_filename
 from getQ import getQ
+from find_chunks import find_chunks
 
 c2 = (apc.h.cgs.value*apc.c.cgs.value)/apc.k_B.cgs.value
  
@@ -195,4 +197,23 @@ class SpecificLineList(LineList):
 
                 #print strengths_jan.ff[0]/self.strength[0]
 
-                
+    def create_chunks(self):
+        
+        thisfreq = self.freq
+        #first = np.vstack((thisgrid, mastertau))
+        #second = np.vstack((thislinelist.freq,thislinelist.strength))
+        
+        chunks = find_chunks(thisfreq)
+        
+        print 'From Linelist.py'
+        print chunks[0]
+        print chunks[1]
+        
+        
+
+
+#testing
+list1 = SpecificLineList(2, 1, 'HITRAN04', True)
+list1.calc_specifics(1000)
+list1.create_chunks()        
+

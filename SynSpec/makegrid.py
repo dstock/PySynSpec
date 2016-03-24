@@ -39,6 +39,9 @@ class grid():
         to be the key parameter.  I have had to remove the option to return just a grid. Always an
         object now."""
         
+        # When called with no arguments this function returns the default wavegrid. <- This functionality
+        # is depended upon elsewhere.
+        
         if resolution == ss.resolution:
             resolution = apc.c.cgs.value/(v_turb*1.0e5)
         # Behaviour as follows:

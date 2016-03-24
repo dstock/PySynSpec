@@ -278,6 +278,9 @@ class Spectrum:
         
         self.templatewave = outspec.grid.wave
         self.templatenorm= out_flux
+    
+        
+    
         
     def get_tau2(self, molno, isono, ll_name, Temp, regen=False, vturb = ss.vturb):
         #Fixing the problems of the original get_tau method.
@@ -320,17 +323,9 @@ class Spectrum:
     
             thisgrid = self.grid.freq[::-1]
             thisfreq = thislinelist.freq
-            thiswave = thislinelist.waveum                      
             #first = np.vstack((thisgrid, mastertau))
             #second = np.vstack((thislinelist.freq,thislinelist.strength))
-            
-            #print first.shape, second.shape
-            
-            #t1 = time.clock()
-            #test = np.concatenate([first, second], axis=1)
-            #test2 = np.sort(test, kind="quicksort")
-            #t2=time.clock()
-            #tic = t2-t1
+
             
             freqs_cum = np.cumsum(thisfreq)/np.sum(thisfreq)
                         

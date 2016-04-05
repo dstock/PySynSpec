@@ -20,21 +20,23 @@
 
 import os
 import numpy as np
+import sys
 
 import SynspecSettings as ss
 from molDB import molProps
+from fileinput import filename
 
 
 
 def create_filename(molno, isono, ll_name, switch, vturb=ss.vturb, want_thermal=0, 
                     wavestart=ss.wavestart, waveend=ss.waveend, profile=ss.profile, 
-                    resolution=ss.resolution, oversample=ss.oversample, Temp=1e3, N=1e18):
+                    resolution=ss.resolution, oversample=ss.oversample, Temp=1e3, N=1e18, chunkID=-1):
     # Also: chunkID,  N
     # Jan's version used all of these - I am choosing only to include the ones I need so far
     # Not sure about the initialization of Temp here. I am going to make it such that it never gets 
     # referenced though.
     
-    
+    #default chunkid=-1 for reasons explained in the 'chunks' case
     
     if switch == 'linelist':
         if ll_name == 'HITRAN04':
@@ -89,11 +91,38 @@ def create_filename(molno, isono, ll_name, switch, vturb=ss.vturb, want_thermal=
     if switch == 'masterwno': 
             print 'not invented here'
 
-    if switch ==  'chunkinfo': 
-        print 'not invented here'
+
+    if switch ==  'chunks' or 'chunkinfo' or 'lines': 
+        # Create the filename for the chunk[info] files. 
+        moldata = molProps(molno, isono)
+        temp_dir = ss.templatedir
+
+        moldir = temp_dir +  moldata.molname
+        isodir = moldir + '/' + moldata.isocode
+        linedir = isodir + '/' + ll_name 
+
+        chunkdir = linedir +'/' + 'linechunks/'
+
+        if (switch != 'chunkinfo' and chunkID >= 0) or (switch == 'chunks' and chunkID < 0):
+            #         if format ne 'chunkinfo' XOR keyword_set(chunkID) then stop
+            #The IDL code caught this error with an XOR, but what we want to know is: are the inputs consistent?
+            # if we want chunkinfo, then chunkid shouldn't have been initialized, likewise
+            # if we want chunks, chunkid should be greater than zero.
+            sys.exit('Something went wrong with the chunk filenames.')
+                
+        if vturb == ss.vturb:
+            vstring='' 
+            vstring2 = ''
+        else:
+            vstring = '_' + str( vturb)
+            vstring2 = vstring+'_'
+
+        if switch == 'chunkinfo':
+            filename = chunkdir + 'chunkinfo' + vstring + '.dat'
+        if switch == 'chunks':
+            filename = chunkdir+'chunk'+vstring2+str(chunkID)+".lines"
+
     
-    if switch ==  'chunks': 
-        print 'not invented here'
     
     if switch ==  'lines': 
         print 'not invented here'

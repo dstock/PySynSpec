@@ -204,14 +204,27 @@ class SpecificLineList(LineList):
         chunks = find_chunks(thisfreq)
         
         print 'From Linelist.py'
-        print chunks[0]
-        print chunks[1]
+        starts = chunks[0]
+        ends = chunks[1]
+        
+        for x in chunks[0]:
+            fname = create_filename(self.spec, self.iso, self.ll_name, "chunks", chunkID=x)
+            chunk = self.extract(starts[x], ends[x])
+        
+        # loop over length of chunks
+        # make a call to extract here
+        # save chunks as small linelists
+        
         
         #Todo list to finish this function:
         # Update create filename to do chunks
         # make chunks - probably append wavelength grid indicies to linelist objects?
         # Perhaps write out a summary of all the chunks?
 
+
+    def extract(self, start, end):
+        return 0
+    
 
 #testing
 list1 = SpecificLineList(2, 1, 'HITRAN04', True)

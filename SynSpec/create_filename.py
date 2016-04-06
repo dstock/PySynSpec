@@ -103,12 +103,12 @@ def create_filename(molno, isono, ll_name, switch, vturb=ss.vturb, want_thermal=
 
         chunkdir = linedir +'/' + 'linechunks/'
 
-        if (switch != 'chunkinfo' and chunkID >= 0) or (switch == 'chunks' and chunkID < 0):
+        if (switch == 'chunkinfo' and chunkID >= 0) or (switch == 'chunks' and chunkID < 0):
             #         if format ne 'chunkinfo' XOR keyword_set(chunkID) then stop
             #The IDL code caught this error with an XOR, but what we want to know is: are the inputs consistent?
             # if we want chunkinfo, then chunkid shouldn't have been initialized, likewise
             # if we want chunks, chunkid should be greater than zero.
-            sys.exit('Something went wrong with the chunk filenames.')
+            sys.exit('Something went wrong with the chunk filenames.' + str(chunkID) + switch)
                 
         if vturb == ss.vturb:
             vstring='' 
@@ -116,6 +116,9 @@ def create_filename(molno, isono, ll_name, switch, vturb=ss.vturb, want_thermal=
         else:
             vstring = '_' + str( vturb)
             vstring2 = vstring+'_'
+
+        if os.path.isdir(chunkdir) == False: #I think you could use an try/catch here, but this is neater.
+            os.makedirs(chunkdir)  
 
         if switch == 'chunkinfo':
             filename = chunkdir + 'chunkinfo' + vstring + '.dat'

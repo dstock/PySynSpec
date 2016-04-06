@@ -42,6 +42,7 @@ import SynspecSettings as ss
 from create_filename import create_filename
 from getQ import getQ
 from find_chunks import find_chunks
+from chardet.latin1prober import FREQ_CAT_NUM
 
 c2 = (apc.h.cgs.value*apc.c.cgs.value)/apc.k_B.cgs.value
  
@@ -112,7 +113,7 @@ class SpecificLineList(LineList):
                         #print i
                         i+=1
         
-                        lines = np.arange(i,dtype=object)
+                lines = np.arange(i,dtype=object)
         
                 #now loop through and fill the array with lines
                 with open(filename) as csvfile:
@@ -134,6 +135,7 @@ class SpecificLineList(LineList):
                 lines = pickle.load(infile)
                 infile.close()
 
+            self.lines = lines
             self.wave = np.array([x.wave for x in lines]) # currently this is actually wno
             self.waveum = np.array([x.waveum for x in lines])
             self.epp = np.array([x.epp for x in lines])
@@ -207,13 +209,14 @@ class SpecificLineList(LineList):
         starts = chunks[0]
         ends = chunks[1]
         
-        for x in chunks[0]:
-            fname = create_filename(self.spec, self.iso, self.ll_name, "chunks", chunkID=x)
-            chunk = self.extract(starts[x], ends[x])
+        for i in range(0, len(starts)):
+            print i
+            fname = create_filename(self.spec, self.iso, self.ll_name, "chunks", chunkID=i)
+            chunk = self.extract(starts[i], ends[i])
+            outfile = open(fname+'.pickle','w')
+            pickle.dump(chunk, outfile)
+            outfile.close()
         
-        # loop over length of chunks
-        # make a call to extract here
-        # save chunks as small linelists
         
         
         #Todo list to finish this function:
@@ -223,8 +226,22 @@ class SpecificLineList(LineList):
 
 
     def extract(self, start, end):
-        return 0
+        
+        #Need to make something here which makes `grid' into just a section of the wavegrid which 
+        # corresponds to the given chunk of lines.
+        
+        return chunk(self.freq[start:end], self.strength[start:end], grid)
+         
     
+
+class chunk():
+    #Lightweight container for small bits of linelist with associated wavelength grid. 
+    # Need to transfer: Line strengths, frequencies, wavegrid.
+    def __init__(self, freq, strength, wave):
+        self.freq = freq
+        self.strength = strength
+        self.wave = wave
+
 
 #testing
 list1 = SpecificLineList(2, 1, 'HITRAN04', True)

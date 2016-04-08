@@ -205,42 +205,78 @@ class SpecificLineList(LineList):
                
         chunks = find_chunks(thisfreq)
         
-        print 'From Linelist.py'
         starts = chunks[0]
         ends = chunks[1]
+        
+        newgrid = grid()
+        thisgrid = newgrid.freq[::-1]
+        
+        
+        
+        sumfilename = create_filename(self.spec, self.iso, self.ll_name, "chunkinfo")
+        summary = open(sumfilename, 'w')
+        
+        #headerstring = str(format='(A4,4A15,A25,2A15,A25)', "ID", "idx1", "idx2", "wnogridstart", "wnogridend", "ngridpoints", "wnolinestart", "wnolineend", "nlines")
+        
+        h1 = "ID"
+        h2 = "idx1"
+        h3 = "idx2"
+        h4 = "wnogridstart"
+        h5 = "wnogridend"
+        h6 = "ngridpoints"
+        h7 = "wnolinestart"
+        h8 = "wnolineend"
+        h9 = "nlines"
+        
+        headerstring =  "{:>4} {:>15} {:>15} {:>15} {:>15} {:>25} {:>15} {:>15} {:>25}".format(h1, h2, h3, h4, h5, h6, h7, h8, h9)
+
+                
+        summary.write(headerstring+"\n")
         
         for i in range(0, len(starts)):
             print i
             fname = create_filename(self.spec, self.iso, self.ll_name, "chunks", chunkID=i)
-            chunk = self.extract(starts[i], ends[i])
+            chunk = self.extract(starts[i], ends[i], thisgrid)
             outfile = open(fname+'.pickle','w')
             pickle.dump(chunk, outfile)
             outfile.close()
         
+            summarystring = "{:>4} {:>15} {:>15} {:>15} {:>15} {:>25}".format(i, chunk.gridinds[0], chunk.gridinds[1], 
+                            newgrid.wave[chunk.gridinds[0]], newgrid.wave[chunk.gridinds[1]], (chunk.gridinds[1]- chunk.gridinds[0]) )+"\n"
+            summary.write(summarystring)
         
         
-        #Todo list to finish this function:
-        # Update create filename to do chunks
-        # make chunks - probably append wavelength grid indicies to linelist objects?
-        # Perhaps write out a summary of all the chunks?
+        summary.close()
+        
+        #Ok So this executes but is wrong - 
+        # The wavenumbers are going the wrong way, suggesting that the reversed frequency grid has screwed everything up somehow.
+        # Perhaps rejig find_chunks to work in wavenumber space rather than frequency space?
+        
+        
 
 
-    def extract(self, start, end):
+
+    def extract(self, start, end, grid):
         
         #Need to make something here which makes `grid' into just a section of the wavegrid which 
         # corresponds to the given chunk of lines.
+        mask = np.ma.where( (grid < self.freq[end]) & (grid > self.freq[start]) )
+        print mask[0][0], mask[0][-1]
         
-        return chunk(self.freq[start:end], self.strength[start:end], grid)
+        grid  = grid[mask] 
+        #print grid, grid.size
+        return chunk(self.freq[start:end], self.strength[start:end], [start, end], [mask[0][0], mask[0][-1]])
          
     
 
 class chunk():
-    #Lightweight container for small bits of linelist with associated wavelength grid. 
-    # Need to transfer: Line strengths, frequencies, wavegrid.
-    def __init__(self, freq, strength, wave):
+    #Lightweight container for small bits of linelist with indicies relevant to master wavelength grid. 
+    # Need to transfer: Line strengths, frequencies, indices.
+    def __init__(self, freq, strength, lineinds, gridinds):
         self.freq = freq
         self.strength = strength
-        self.wave = wave
+        self.lineinds = lineinds
+        self.gridinds = gridinds
 
 
 #testing

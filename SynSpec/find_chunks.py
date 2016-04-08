@@ -31,7 +31,7 @@ n_lines * n_wavepoints value is below a certain threshold. This is done recursiv
 """
 
 
-def find_chunks(linefreqs):
+def find_chunks(linefreqs, plot=0):
         
     thisgrid = grid() # With no arguments this returns the default wavegrid. Need to preserve that behaviour.
     thisgrid = thisgrid.freq[::-1]
@@ -97,11 +97,11 @@ def find_chunks(linefreqs):
     starts = sorted(starts)
     ends = sorted(ends)
             
-        
-    plt.plot(linefreqs, freqs_cum, '-ob', linefreqs[0:-1], dx/np.max(dx), '-or', freqs, vals/np.max(vals), 'og')
-    for x in range(0, len(starts)):
-        plt.plot( [linefreqs[starts[x]], linefreqs[ends[x]]], [0.5, 0.5], '-or')
-    plt.show()
+    if plot == 1:    
+        plt.plot(linefreqs, freqs_cum, '-ob', linefreqs[0:-1], dx/np.max(dx), '-or', freqs, vals/np.max(vals), 'og')
+        for x in range(0, len(starts)):
+            plt.plot( [linefreqs[starts[x]], linefreqs[ends[x]]], [0.5, 0.5], '-or')
+            plt.show()
     
     
     return [starts, ends]

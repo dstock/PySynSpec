@@ -47,7 +47,7 @@ class Template:
         if os.path.isfile(filename) == False or regen == True:
             #Stuff to (re)generate template
             data = Spectrum()
-            data.get_tau2(molno,isono,ll_name,Temp, regen)
+            data.get_tau(molno,isono,ll_name,Temp, regen)
             data.do_rt(N)
             data.regrid(resolution=resolution, oversample=oversample)    
             self.data = data

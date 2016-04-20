@@ -33,23 +33,36 @@ n_lines * n_wavepoints value is below a certain threshold. This is done recursiv
 
 def find_chunks(linefreqs, plot=0):
         
+        
     thisgrid = grid() # With no arguments this returns the default wavegrid. Need to preserve that behaviour.
-    thisgrid = thisgrid.freq[::-1]
+    thisgrid = thisgrid.freq#[::-1]
     
     freqs_cum = np.cumsum(linefreqs)/np.sum(linefreqs)
-                
+    
+
     # working on finding the breakpoints between the different sets of lines such that we can make a recursive algorithm to split linelists into chunks.
-    dx = np.diff(linefreqs)
+    dx = -np.diff(linefreqs) # This has to be negative because our cumulative distribution is actually the wrong way round.
     length = dx.size
 
-    test = n_max(dx, 10)
-   
-    #print test
+    test = n_max(dx, 20)
                    
     freqs = [linefreqs[x[1]] for x in test]
     inds = [x[1] for x in test]
     vals = [x[0] for x in test]
-    
+
+    if plot==1:    
+        plt.plot(sorted(vals)[::-1])
+        plt.show()
+        print sorted(vals)[::-1]/np.max(vals)
+
+
+    # If you plot the distribution above, you see that the size of the gaps goes down to less than 10% of the largest gap within 20.
+    # Therefore we only include the gaps bigger than 10% of the size of the biggest gap in our initial cuts.
+
+    inds = [x for x,y in zip(inds, vals) if y/np.max(vals) > 0.1]
+    freqs = [x for x,y in zip(freqs, vals) if y/np.max(vals) > 0.1]
+
+
     #print length
     
     #print freqs
@@ -58,22 +71,27 @@ def find_chunks(linefreqs, plot=0):
     #The inds are basically the end of each chunk, so create a new array for the beginnings:
  
     starts = [x+1 for x in ends]
+
     
     starts.insert(0, 0) # the first chunk starts with the first line..
     ends.append(length) # the last line has to be the end of the last chunk
                 
     sizes = [ x-y for x,y in zip(ends,starts) ]#(ends-starts)
-    n_points = [np.size(thisgrid[ (thisgrid < linefreqs[x]) & (thisgrid > linefreqs[y]) ]) for x,y in zip(ends,starts)] 
+    n_points = [np.size(thisgrid[ (thisgrid > linefreqs[x]) & (thisgrid < linefreqs[y]) ]) for x,y in zip(ends,starts)] 
     #find n points in overall grid between line start[i] and end[i]
-    #print sizes
-    #print n_points
+    # > and < appear back to front because the grid runs the wrong way.
+
     
     chunk_sizes = [x*y for x,y in zip(sizes,n_points)]
     #print arr_sizes
     
+    print chunk_sizes
+    
     thresh = 12500000
     
     need_subdiv = [x > thresh for x in chunk_sizes]
+    print need_subdiv
+    
             
     # based on some kind of size criteria here we want to split up the chunks that are too big.
     
@@ -101,7 +119,7 @@ def find_chunks(linefreqs, plot=0):
         plt.plot(linefreqs, freqs_cum, '-ob', linefreqs[0:-1], dx/np.max(dx), '-or', freqs, vals/np.max(vals), 'og')
         for x in range(0, len(starts)):
             plt.plot( [linefreqs[starts[x]], linefreqs[ends[x]]], [0.5, 0.5], '-or')
-            plt.show()
+        plt.show()
     
     
     return [starts, ends]
@@ -115,7 +133,7 @@ def split_chunks(linefreqs, start, end, threshold, level=1):
     print 'Level '+str(level)
  
     thisgrid = grid() # With no arguments this returns the default wavegrid. Need to preserve that behaviour.
-    thisgrid = thisgrid.freq[::-1]
+    thisgrid = thisgrid.freq
 
     #we presume that the chunk is too big, so we split it before checking again
     
@@ -127,10 +145,11 @@ def split_chunks(linefreqs, start, end, threshold, level=1):
     print starts, ends
     
     sizes = [ x-y for x,y in zip(ends,starts) ]#(ends-starts)
-    n_points = [np.size(thisgrid[ (thisgrid < linefreqs[x]) & (thisgrid > linefreqs[y]) ]) for x,y in zip(ends,starts)] 
+    n_points = [np.size(thisgrid[ (thisgrid > linefreqs[x]) & (thisgrid < linefreqs[y]) ]) for x,y in zip(ends,starts)] 
+
     #find n points in overall grid between line start[i] and end[i]
-    #print sizes
-    #print n_points
+    print sizes
+    print n_points
     
     chunk_sizes = [x*y for x,y in zip(sizes,n_points)]
     #print arr_sizes

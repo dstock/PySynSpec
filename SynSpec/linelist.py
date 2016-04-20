@@ -43,6 +43,8 @@ from create_filename import create_filename
 from getQ import getQ
 from find_chunks import find_chunks
 from chardet.latin1prober import FREQ_CAT_NUM
+from chunk import chunk
+
 
 c2 = (apc.h.cgs.value*apc.c.cgs.value)/apc.k_B.cgs.value
  
@@ -135,18 +137,25 @@ class SpecificLineList(LineList):
                 lines = pickle.load(infile)
                 infile.close()
 
-            self.lines = lines
-            self.wave = np.array([x.wave for x in lines]) # currently this is actually wno
-            self.waveum = np.array([x.waveum for x in lines])
-            self.epp = np.array([x.epp for x in lines])
-            self.eA = np.array([x.eA for x in lines])
-            self.freq = np.array([x.freq for x in lines])
+
+            #
+            #
+            #
+            self.lines = lines[::-1] # Trying to call attention to this line, where I explicitly reverse the linelist to make it go with increasing lambda.
+            # 
+            #
+            #
+            self.wave = np.array([x.wave for x in self.lines]) # currently this is actually wno
+            self.waveum = np.array([x.waveum for x in self.lines])
+            self.epp = np.array([x.epp for x in self.lines])
+            self.eA = np.array([x.eA for x in self.lines])
+            self.freq = np.array([x.freq for x in self.lines])
             E_temp = -1.0*self.epp * c2 / 296.0
             w_temp = -1.0*self.wave * c2 / 296.0
-            self.strength = np.array([x.strength for x in lines]) * (props.Q296/props.abund) / (np.exp(E_temp) * (1.0-np.exp(w_temp)) )
-            #print np.array([x.strength for x in lines]) 
-            spec = np.array([x.spec for x in lines])
-            iso = np.array([x.iso for x in lines])
+            self.strength = np.array([x.strength for x in self.lines]) * (props.Q296/props.abund) / (np.exp(E_temp) * (1.0-np.exp(w_temp)) )
+            #print np.array([x.strength for x in self.lines]) 
+            spec = np.array([x.spec for x in self.lines])
+            iso = np.array([x.iso for x in self.lines])
         
         
             if np.var(spec) == 0.0:
@@ -203,16 +212,23 @@ class SpecificLineList(LineList):
         
         thisfreq = self.freq
                
-        chunks = find_chunks(thisfreq)
-        
+        chunks = find_chunks(thisfreq, plot=0)
+                
         starts = chunks[0]
         ends = chunks[1]
         
+        nchunks = len(starts)
+        
+        print "*****************************"
+        print starts
+        print ends
+        print "*****************************"
+    
+        
         newgrid = grid()
-        thisgrid = newgrid.freq[::-1]
+        thisgrid = newgrid.wave#[::-1]
         
-        
-        
+               
         sumfilename = create_filename(self.spec, self.iso, self.ll_name, "chunkinfo")
         summary = open(sumfilename, 'w')
         
@@ -236,51 +252,44 @@ class SpecificLineList(LineList):
         for i in range(0, len(starts)):
             print i
             fname = create_filename(self.spec, self.iso, self.ll_name, "chunks", chunkID=i)
-            chunk = self.extract(starts[i], ends[i], thisgrid)
+            chunk = self.extract(starts[i], ends[i], thisgrid, nchunks)
             outfile = open(fname+'.pickle','w')
             pickle.dump(chunk, outfile)
             outfile.close()
         
-            summarystring = "{:>4} {:>15} {:>15} {:>15} {:>15} {:>25}".format(i, chunk.gridinds[0], chunk.gridinds[1], 
-                            newgrid.wave[chunk.gridinds[0]], newgrid.wave[chunk.gridinds[1]], (chunk.gridinds[1]- chunk.gridinds[0]) )+"\n"
+            summarystring = "{:>4} {:>15} {:>15} {:>15} {:>15} {:>25} {:>15} {:>15} {:>25}".format(i, chunk.gridinds[0], chunk.gridinds[1], 
+                            newgrid.wave[chunk.gridinds[0]], newgrid.wave[chunk.gridinds[1]], (chunk.gridinds[1]- chunk.gridinds[0]), 
+                            self.waveum[starts[i]], self.waveum[ends[i]], ends[i]-starts[i] )+"\n"
             summary.write(summarystring)
         
         
         summary.close()
         
-        #Ok So this executes but is wrong - 
-        # The wavenumbers are going the wrong way, suggesting that the reversed frequency grid has screwed everything up somehow.
-        # Perhaps rejig find_chunks to work in wavenumber space rather than frequency space?
-        
-        
+        #This chunking routine works differently from the original, in that it now stores the chunks in increasing wavelength space. I.e.
+        # chunk one contains the lowest wavelength lines.
 
 
 
-    def extract(self, start, end, grid):
+    def extract(self, start, end, grid, nchunks):
         
         #Need to make something here which makes `grid' into just a section of the wavegrid which 
         # corresponds to the given chunk of lines.
-        mask = np.ma.where( (grid < self.freq[end]) & (grid > self.freq[start]) )
+        mask = np.ma.where( (grid < self.waveum[end]) & (grid > self.waveum[start]) )
+        print start, end
+        print self.waveum[start], self.waveum[end]
+        print mask
         print mask[0][0], mask[0][-1]
         
         grid  = grid[mask] 
         #print grid, grid.size
-        return chunk(self.freq[start:end], self.strength[start:end], [start, end], [mask[0][0], mask[0][-1]])
+        return chunk(self.waveum[start:end], self.freq[start:end], self.strength[start:end], [start, end], [mask[0][0], mask[0][-1]], nchunks)
          
     
 
-class chunk():
-    #Lightweight container for small bits of linelist with indicies relevant to master wavelength grid. 
-    # Need to transfer: Line strengths, frequencies, indices.
-    def __init__(self, freq, strength, lineinds, gridinds):
-        self.freq = freq
-        self.strength = strength
-        self.lineinds = lineinds
-        self.gridinds = gridinds
 
 
 #testing
 list1 = SpecificLineList(2, 1, 'HITRAN04', True)
-list1.calc_specifics(1000)
+#list1.calc_specifics(1000)
 list1.create_chunks()        
 

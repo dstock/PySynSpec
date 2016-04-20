@@ -282,7 +282,7 @@ class Spectrum:
         
     
         
-    def get_tau2(self, molno, isono, ll_name, Temp, regen=False, vturb = ss.vturb):
+    def get_tau_chunks(self, molno, isono, ll_name, Temp, regen=False, vturb = ss.vturb):
         #Fixing the problems of the original get_tau method.
         # 1: Chunks with weird sizes and lots of zeros. --- Have removed the leading and trailing zeros.
         # 2: Save/ restore the chunks.
@@ -298,12 +298,45 @@ class Spectrum:
         filename = create_filename(molno, isono, ll_name, 'tau', vturb, Temp=self.Temp)
         
         if os.path.isfile(filename) == False or regen == True:
+        
+            # First of all we need to restore the chunkinfo file..
+            # Or do we? All we would be getting would be the number of chunks and I have appended that to the
+            # chunk object.
+            # So basically we need to read the first chunk, then get the number of chunks and cycle through the rest.
+            
+            mastertau = self.grid.flux
+            mastertau[:] = 0.0
+            
+            counter = 0
+            filestoread = True
+            
+            while filestoread:
+                fname = create_filename(self.spec, self.iso, self.ll_name, "chunks", chunkID=counter)
+                infile = open(fname+'.pickle','r')
+                thischunk = pickle.load(infile)
+                infile.close()
+
+                #do some shit to this chunk here
+                
+                
+                
+                
+                if counter == thischunk.nchunks:  
+                    filestoread = False
+                
+                # we know the first chunk will always be chunk 0, so we can read it in the loop and then check against the
+                # nchunks number which is carried by each chunk. When we have read the last file, the loop condition gets set to false
+                # and the updated counter doesn't matter any more.
+                    
+                counter = counter + 1
+
+
+        
             
             thislinelist = SpecificLineList(molno, isono, ll_name, regen)
             thislinelist.calc_specifics(Temp)
     
-            mastertau = self.grid.flux
-            mastertau[:] = 0.0
+
             
             delta_nud = thislinelist.wave * vturb * 1e5 
         
@@ -327,50 +360,6 @@ class Spectrum:
             #second = np.vstack((thislinelist.freq,thislinelist.strength))
 
             
-            freqs_cum = np.cumsum(thisfreq)/np.sum(thisfreq)
-                        
-            # working on finding the breakpoints between the different sets of lines such that we can make a recursive algorithm to split linelists into chunks.
-            dx = np.diff(thisfreq)
-            length = dx.size
-
-            test = n_max(dx, 10)
-           
-            print test
-            
-                       
-            freqs = [thisfreq[x[1]] for x in test]
-            inds = [x[1] for x in test]
-            vals = [x[0] for x in test]
-            
-            print length
-            
-            #print freqs
-            ends =  sorted(inds)
-            
-            #The inds are basically the end of each chunk, so create a new array for the beginnings:
-         
-            starts = [x+1 for x in ends]
-            ends.append(length) # the last line has to be the end of the last chunk
-            starts.insert(0, 0) # the first chunk starts with the first line..
-                        
-            sizes = [ x-y for x,y in zip(ends,starts) ]#(ends-starts)
-            n_points = [np.size(thisgrid[ (thisgrid < thisfreq[x]) & (thisgrid > thisfreq[y]) ]) for x,y in zip(ends,starts)] 
-            #find n points in overall grid between line start[i] and end[i]
-            print sizes
-            print n_points
-            
-            arr_sizes = [x*y for x,y in zip(sizes,n_points)]
-            print arr_sizes
-            
-            #print freqs_cum.size, thisfreq[0:-1].size
-            
-            plt.plot(thisfreq, freqs_cum, '-ob', thisfreq[0:-1], dx/np.max(dx), '-or', freqs, vals/np.max(vals), 'og')
-            for x in range(0, len(starts)):
-                plt.plot( [thisfreq[starts[x]], thisfreq[ends[x]]], [0.5, 0.5], 'r')
-                        
-            plt.show()
-            
-            sys.exit()
             
             for cycle in range(int(iters)+1):
                 print 'cycle=', cycle
@@ -454,7 +443,3 @@ class Spectrum:
         self.spectrumtype='tau'
 
 
-def n_max(arr, n):
-    indices = arr.ravel().argsort()[-n:]
-    indices = (np.unravel_index(i, arr.shape) for i in indices)
-    return [[arr[i], i[0]] for i in indices]

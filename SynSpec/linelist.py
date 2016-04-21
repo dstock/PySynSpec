@@ -289,7 +289,7 @@ class SpecificLineList(LineList):
 
 
 #testing
-list1 = SpecificLineList(2, 1, 'HITRAN04', True)
+#list1 = SpecificLineList(2, 1, 'HITRAN04', True)
 #list1.calc_specifics(1000)
-list1.create_chunks()        
+#%list1.create_chunks()        
 

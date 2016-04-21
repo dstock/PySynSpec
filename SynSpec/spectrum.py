@@ -310,18 +310,56 @@ class Spectrum:
             counter = 0
             filestoread = True
             
+            thisgrid = self.grid.freq#[::-1]
+            
+            over = 2e9 # This is the frequency overlap I settled on.
+
+            
             while filestoread:
-                fname = create_filename(self.spec, self.iso, self.ll_name, "chunks", chunkID=counter)
+                fname = create_filename(molno, isono, ll_name, "chunks", chunkID=counter)
                 infile = open(fname+'.pickle','r')
                 thischunk = pickle.load(infile)
                 infile.close()
 
+                print "reading chunk: "+str(counter)
+                print "total chunks: "+str(thischunk.nchunks)
+                print filestoread
+
                 #do some shit to this chunk here
                 
+                lines_s = thischunk.strength
+                lines_w = thischunk.freq
+                lines_deltanu = thischunk.wave * vturb * 1e5
                 
+                thisfreq = thisgrid[thischunk.gridinds[0]:thischunk.gridinds[1]]
+                thiswave = self.grid.wave[thischunk.gridinds[0]:thischunk.gridinds[1]]
                 
+                ff2d = np.vstack([lines_s]*len(thisfreq))
+                lines2d = np.vstack([lines_w]*len(thisfreq))
+                dnu_2d = np.vstack([lines_deltanu]*len(thisfreq))
+                wavegrid2d = np.transpose(np.vstack([thisfreq]*len(lines_s)))
                 
-                if counter == thischunk.nchunks:  
+                temp = wavegrid2d - lines2d
+                temp = temp/dnu_2d
+                temp = temp**2.0
+                temp = -temp
+                temp = np.exp( temp )
+                
+                mask = ma.where(temp < 500)
+                                
+                temp[mask] = temp[mask] * ff2d[mask]
+                temp[mask] = temp[mask] / dnu_2d[mask]
+                temp[mask] = temp[mask] / np.sqrt(pi)
+                
+                thistau = np.sum(temp, axis=1)
+                
+                print thischunk.wave, len(thischunk.wave)
+                print thistau, len(thistau)
+                
+                plt.plot(thiswave, thistau, 'ob')          
+                plt.show()
+                
+                if counter == thischunk.nchunks -1 or counter==3: # -1 because we start at zero.  
                     filestoread = False
                 
                 # we know the first chunk will always be chunk 0, so we can read it in the loop and then check against the
@@ -330,112 +368,6 @@ class Spectrum:
                     
                 counter = counter + 1
 
-
-        
-            
-            thislinelist = SpecificLineList(molno, isono, ll_name, regen)
-            thislinelist.calc_specifics(Temp)
-    
-
-            
-            delta_nud = thislinelist.wave * vturb * 1e5 
-        
-            # assume that every incoming linelist is sorted.
-            #split spectrum into chunks of say 100 lines            
-            
-            nlines=100
-            cycle = 0
-            iters = floor( thislinelist.strength.size/nlines )
-            
-            over = 2e9
-            
-            #print thislinelist.strength.size
-            #print floor(thislinelist.strength.size/nlines)
-            #sys.exit()
-            a_size=nlines
-    
-            thisgrid = self.grid.freq[::-1]
-            thisfreq = thislinelist.freq
-            #first = np.vstack((thisgrid, mastertau))
-            #second = np.vstack((thislinelist.freq,thislinelist.strength))
-
-            
-            
-            for cycle in range(int(iters)+1):
-                print 'cycle=', cycle
-    
-                print 'line number range=', (cycle)*nlines, (cycle+1)*nlines, thislinelist.strength.size
-    
-                thislooplines_s = thislinelist.strength[(cycle)*nlines: (cycle+1)*nlines]
-                thislooplines_w = thislinelist.freq[(cycle)*nlines: (cycle+1)*nlines]
-                thisdeltanu = delta_nud[(cycle)*nlines: (cycle+1)*nlines]
-                
-                a_size =  thislooplines_s.size
-                               
-                print 'wavelength range=', thislooplines_w[0], thislooplines_w[-1]
-
-                linerange = [thislooplines_w[0], thislooplines_w[-1] ]
-                
-                print 'linerange=', linerange
-                #wavecov = linerange[1] - linerange[0]
-                
-                #print self.grid.freq[0], self.grid.freq[-1]
-
-                #if cycle==0: sys.exit()
-            
-                thiswavegrid = thisgrid[(thisgrid > linerange[0]-over) & (thisgrid < linerange[1]+over)]
-               
-                test = np.concatenate([thiswavegrid, thislooplines_w])
-                test2 = np.sort(test, kind='quicksort')
-               
-                print thiswavegrid - thislooplines_w[50]
-                print thislooplines_w
-
-                plt.plot(test2, np.exp(-((test2 - thislooplines_w[50])/thisdeltanu[50])**2), "-bo", thislooplines_w[50], 1e0, "ro" )
-                plt.show()
-                
-                sys.exit()
-               
-                          
-                print 'Nlines, Npoints', thislooplines_s.size, thiswavegrid.size
-            
-                if thiswavegrid.size == 0:
-                    continue
-                else:        
-                    ff2d = np.vstack([thislooplines_s]*thiswavegrid.size)
-                    lines2d = np.vstack([thislooplines_w]*thiswavegrid.size)
-                    dnu_2d = np.vstack([thisdeltanu]*thiswavegrid.size)
-                    wavegrid2d = np.transpose(np.vstack([thiswavegrid]*a_size))
-                    
-                    temp = wavegrid2d - lines2d
-                    temp = temp/dnu_2d
-                    temp = temp**2.0
-                    temp = -temp
-                    temp = np.exp( temp )
-                    
-                    mask = ma.where(temp < 500)
-                                    
-                    temp[mask] = temp[mask] * ff2d[mask]
-                    temp[mask] = temp[mask] / dnu_2d[mask]
-                    temp[mask] = temp[mask] / np.sqrt(pi)
-                    
-                    thistau = np.sum(temp, axis=1)
-                    
-                    
-                    mastertau[(thisgrid > linerange[0]-over) & (thisgrid < linerange[1]+over)] += thistau
-                
-        
-            self.tau = mastertau[::-1] #The -1 reverses the array to align it with the um wavelength grid
-            outfile = open(filename,'w')
-            pickle.dump(mastertau, outfile)
-            outfile.close()
-        else:
-            infile = open(filename,'r') #Can only get to this block if the .pickle file exists. Restore it, its faster.
-            mastertau = pickle.load(infile)
-            infile.close()
-            self.tau = mastertau[::-1] #The -1 reverses the array to align it with the um wavelength grid
-            print 'restored tau pickle'           
-                
         #jan = readsav('/home/dstock/sf/idl/code/templates/CO2/626/HITRAN04/v3.000/gauss/tau/CO2_626_HITRAN04_v3.000_NTH_gauss_T100.000.xdr')
         #plt.plot(self.grid.wave, mastertau[::-1]*1.1, 'b')#, jan.wave, jan.tau, 'r')
         #plt.show()

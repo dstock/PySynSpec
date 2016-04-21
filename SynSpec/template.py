@@ -34,7 +34,7 @@ from scipy.io import readsav
 import SynspecSettings as ss
 from create_filename import create_filename
 import matplotlib.pyplot as plt
-
+from linelist import SpecificLineList
 
 from spectrum import Spectrum
 
@@ -47,7 +47,19 @@ class Template:
         if os.path.isfile(filename) == False or regen == True:
             #Stuff to (re)generate template
             data = Spectrum()
-            data.get_tau(molno,isono,ll_name,Temp, regen)
+            
+            #check if this spectrum has been chunked
+            
+            #chunkinfo filename:
+            fname = create_filename(molno, isono, ll_name, "chunkinfo")
+            
+            if not os.path.isfile(fname):
+                thislinelist = SpecificLineList(molno, isono, ll_name, regen)
+                thislinelist.calc_specifics(Temp)
+                thislinelist.create_chunks()
+            
+            data.get_tau_chunks(molno, isono, ll_name, Temp, regen)
+            
             data.do_rt(N)
             data.regrid(resolution=resolution, oversample=oversample)    
             self.data = data

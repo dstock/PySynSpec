@@ -67,6 +67,7 @@ class Template:
             outfile = open(filename,'w')
             pickle.dump(data, outfile)
             outfile.close()
+            print 'saved template pickle'
             
         else:
             infile = open(filename,'r') #Can only get to this block if the .pickle file exists. Restore it, its faster.
@@ -77,7 +78,7 @@ class Template:
 
 
 
-template = Template(2,1,100.0, 10**18.5, ll_name='HITRAN04', regen=True, resolution=120.0)
+template = Template(2,1,1010.0, 10**19.0, ll_name='HITRAN04', regen=False, resolution=120.0)
 
 
     

@@ -52,6 +52,7 @@ c2 = (apc.h.cgs.value*apc.c.cgs.value)/apc.k_B.cgs.value
 class LineList:
     """A basic line list constructor"""
     def __init__(self, lines):  # need to add options
+        #This implicitly expects `lines' to be an array of line objects.
         self.lines = lines
         spec = np.array([x.spec for x in lines])
         iso  = np.array([x.iso for x in lines])
@@ -194,6 +195,8 @@ class SpecificLineList(LineList):
     
     def calc_specifics(self, Temp):
         """A separate method to calculate the specific line list properties based on an input T."""
+        #Keep this method for when the chunk object gets merged back into linelist.
+        
         if self.specs_calced == False:
             #make sure we don't inadvertently try and do this twice
             if self.ll_name == 'HITRAN04':
@@ -311,10 +314,6 @@ class SpecificLineList(LineList):
             print self.waveum[start], self.waveum[end]
             print mask
             print 'no we\'re in this block'
-            print mask == False 
-            print mask == np.array([])
-            print mask == mask
-            print len(mask[0])
             print mask[0][0], mask[0][-1]
             gridinds = [mask[0][0], mask[0][-1]]
             outwithgrid = False

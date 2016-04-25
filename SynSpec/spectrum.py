@@ -298,9 +298,9 @@ class Spectrum:
         filename = create_filename(molno, isono, ll_name, 'tau', vturb, Temp=self.Temp)
         
         #for testing purposes, lets open the tau profile we made the other way:
-        infile = open(filename,'r') #Can only get to this block if the .pickle file exists. Restore it, its faster.
-        mastertau1 = pickle.load(infile)
-        infile.close()
+        #infile = open(filename,'r') #Can only get to this block if the .pickle file exists. Restore it, its faster.
+        #mastertau1 = pickle.load(infile)
+        #infile.close()
         
         
         if os.path.isfile(filename) == False or regen == True:
@@ -397,7 +397,23 @@ class Spectrum:
                     
                 counter = counter + 1
         
-        plt.plot(self.grid.wave, mastertau, 'b', self.grid.wave, mastertau1[::-1], 'r') 
+            self.tau = mastertau[::-1]
+            outfile = open(filename,'w')
+            pickle.dump(mastertau, outfile)
+            outfile.close()
+            print 'saved tau pickle'
+        else:
+            infile = open(filename,'r') #Can only get to this block if the .pickle file exists. Restore it, its faster.
+            mastertau = pickle.load(infile)
+            infile.close()
+            self.tau = mastertau #The -1 reverses the array to align it with the um wavelength grid
+            print 'restored tau pickle'  
+        
+        
+        
+        # UPDATE THIS TO SAVE TAU PROFILE ONCE OVERLAPS ADDED.
+        
+        plt.plot(self.grid.wave, mastertau, 'b'),#self.grid.wave, mastertau1[::-1], 'r') 
         plt.xlim(0,200)
         #plt.ylim(np.max(thistau)*0.1, np.max(thistau)*1.1)         
         plt.show()

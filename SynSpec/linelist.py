@@ -91,13 +91,32 @@ class LineList:
 class SpecificLineList(LineList):
     """Container for methods fetching hitran04 line lists"""
     
-    specs_calced = 0
+    #Comments:
+    #This needs to be refactored such that __init__ initializes all the variables
+    # and then we have class methods which load up those initial variables using class methods.
+    
+    #We can write the new init method and leave the old one in place as the second definition
+    # of init rebinds the function.
+    
+    #def __init__(self):
+    #    self.ll_name = ""
+    #    self.specs_calced = False
+    #    self.wave
+    #    self.freq
+    #    self.epp
+    #    self.eA
+    #    self.iso
+    #    self.spec
+        
+    
     
     def __init__(self, molno, isono, ll_name, regen=False):
         
         print molno, isono
         self.ll_name = ll_name
         props = HT04_globals(molno, isono)
+        self.specs_calced = False
+
         
         if ll_name == 'HITRAN04':
             filename = create_filename(molno, isono, ll_name, 'linelist')
@@ -175,11 +194,11 @@ class SpecificLineList(LineList):
     
     def calc_specifics(self, Temp):
         """A separate method to calculate the specific line list properties based on an input T."""
-        if self.specs_calced == 0:
+        if self.specs_calced == False:
             #make sure we don't inadvertently try and do this twice
             if self.ll_name == 'HITRAN04':
                 self.Temp = Temp
-                self.specs_calced = 1
+                self.specs_calced = True
                 #lets make sure the relevant temperature is now carried around with the linelist.                
                 
                 props = HT04_globals(self.spec, self.iso)
@@ -222,8 +241,10 @@ class SpecificLineList(LineList):
         print "*****************************"
         print starts
         print ends
+        print len(starts)
+        print len(ends)
         print "*****************************"
-    
+         
         
         newgrid = grid()
         thisgrid = newgrid.wave#[::-1]
@@ -257,8 +278,13 @@ class SpecificLineList(LineList):
             pickle.dump(chunk, outfile)
             outfile.close()
         
-            summarystring = "{:>4} {:>15} {:>15} {:>15} {:>15} {:>25} {:>15} {:>15} {:>25}".format(i, chunk.gridinds[0], chunk.gridinds[1], 
+            if chunk.outwithgrid == 0:
+                summarystring = "{:>4} {:>15} {:>15} {:>15} {:>15} {:>25} {:>15} {:>15} {:>25}".format(i, chunk.gridinds[0], chunk.gridinds[1], 
                             newgrid.wave[chunk.gridinds[0]], newgrid.wave[chunk.gridinds[1]], (chunk.gridinds[1]- chunk.gridinds[0]), 
+                            self.waveum[starts[i]], self.waveum[ends[i]], ends[i]-starts[i] )+"\n"
+            else:
+                summarystring = "{:>4} {:>15} {:>15} {:>15} {:>15} {:>25} {:>15} {:>15} {:>25}".format(i, "NA", "NA", 
+                            "NA", "NA", "NA", 
                             self.waveum[starts[i]], self.waveum[ends[i]], ends[i]-starts[i] )+"\n"
             summary.write(summarystring)
         
@@ -275,14 +301,28 @@ class SpecificLineList(LineList):
         #Need to make something here which makes `grid' into just a section of the wavegrid which 
         # corresponds to the given chunk of lines.
         mask = np.ma.where( (grid < self.waveum[end]) & (grid > self.waveum[start]) )
-        print start, end
-        print self.waveum[start], self.waveum[end]
-        print mask
-        print mask[0][0], mask[0][-1]
+        
+        if len(mask[0]) == 0:
+            outwithgrid = True
+            print 'are we in this block?'
+            gridinds = [float('NaN'),float('NaN')]
+        else:    
+            print start, end
+            print self.waveum[start], self.waveum[end]
+            print mask
+            print 'no we\'re in this block'
+            print mask == False 
+            print mask == np.array([])
+            print mask == mask
+            print len(mask[0])
+            print mask[0][0], mask[0][-1]
+            gridinds = [mask[0][0], mask[0][-1]]
+            outwithgrid = False
         
         grid  = grid[mask] 
         #print grid, grid.size
-        return chunk(self.waveum[start:end], self.freq[start:end], self.strength[start:end], [start, end], [mask[0][0], mask[0][-1]], nchunks)
+        return chunk(self.waveum[start:end], self.freq[start:end], self.strength[start:end], [start, end],
+                      gridinds, nchunks, self.ll_name, self.spec, self.iso, outwithgrid, self.epp[start:end])
          
     
 
@@ -291,5 +331,5 @@ class SpecificLineList(LineList):
 #testing
 #list1 = SpecificLineList(2, 1, 'HITRAN04', True)
 #list1.calc_specifics(1000)
-#%list1.create_chunks()        
+#list1.create_chunks()        
 

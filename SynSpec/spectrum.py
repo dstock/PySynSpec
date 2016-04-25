@@ -297,6 +297,12 @@ class Spectrum:
         #lets make sure that we haven't done this before..
         filename = create_filename(molno, isono, ll_name, 'tau', vturb, Temp=self.Temp)
         
+        #for testing purposes, lets open the tau profile we made the other way:
+        infile = open(filename,'r') #Can only get to this block if the .pickle file exists. Restore it, its faster.
+        mastertau1 = pickle.load(infile)
+        infile.close()
+        
+        
         if os.path.isfile(filename) == False or regen == True:
         
             # First of all we need to restore the chunkinfo file..
@@ -321,6 +327,19 @@ class Spectrum:
                 thischunk = pickle.load(infile)
                 infile.close()
 
+                if thischunk.outwithgrid == True:
+                    if counter == thischunk.nchunks -1: # -1 because we start at zero.  
+                        filestoread = False
+                    counter = counter + 1
+                    continue
+                
+                # This block checks whether the current chunk exists within the wavelength grid
+                # if not, then we check if its the last chunk (as this would be a common situation
+                # for a chunk outwith the grid, iterate the counter and go back to the beginning.
+
+
+                thischunk.calc_specifics(Temp)
+
                 print "reading chunk: "+str(counter)
                 print "total chunks: "+str(thischunk.nchunks)
                 print filestoread
@@ -329,11 +348,12 @@ class Spectrum:
                 
                 lines_s = thischunk.strength
                 lines_w = thischunk.freq
-                lines_deltanu = thischunk.wave * vturb * 1e5
+                lines_deltanu = (10000.0/thischunk.wave) * vturb * 1e5
+                
+                # we need to add some overlap chunk here.
                 
                 thisfreq = thisgrid[thischunk.gridinds[0]:thischunk.gridinds[1]]
-                thiswave = self.grid.wave[thischunk.gridinds[0]:thischunk.gridinds[1]]
-                
+
                 ff2d = np.vstack([lines_s]*len(thisfreq))
                 lines2d = np.vstack([lines_w]*len(thisfreq))
                 dnu_2d = np.vstack([lines_deltanu]*len(thisfreq))
@@ -353,13 +373,22 @@ class Spectrum:
                 
                 thistau = np.sum(temp, axis=1)
                 
-                print thischunk.wave, len(thischunk.wave)
+                #print thischunk.wave, len(thischunk.wave)
                 print thistau, len(thistau)
                 
-                plt.plot(thiswave, thistau, 'ob')          
-                plt.show()
+  
+                mastertau[thischunk.gridinds[0]:thischunk.gridinds[1]] = thistau
                 
-                if counter == thischunk.nchunks -1 or counter==3: # -1 because we start at zero.  
+                               
+                #plt.plot(thiswave, thistau*1.1, 'b', self.grid.wave, mastertau1[::-1], 'r') 
+                #plt.xlim(thiswave[0], thiswave[-1])
+                #plt.ylim(np.max(thistau)*0.1, np.max(thistau)*1.1)         
+                #plt.show()
+                
+                #Need to reassemble the chunks into a tau array here.
+                
+                
+                if counter == thischunk.nchunks -1: # -1 because we start at zero.  
                     filestoread = False
                 
                 # we know the first chunk will always be chunk 0, so we can read it in the loop and then check against the
@@ -367,11 +396,14 @@ class Spectrum:
                 # and the updated counter doesn't matter any more.
                     
                 counter = counter + 1
-
-        #jan = readsav('/home/dstock/sf/idl/code/templates/CO2/626/HITRAN04/v3.000/gauss/tau/CO2_626_HITRAN04_v3.000_NTH_gauss_T100.000.xdr')
-        #plt.plot(self.grid.wave, mastertau[::-1]*1.1, 'b')#, jan.wave, jan.tau, 'r')
-        #plt.show()
         
+        plt.plot(self.grid.wave, mastertau, 'b', self.grid.wave, mastertau1[::-1], 'r') 
+        plt.xlim(0,200)
+        #plt.ylim(np.max(thistau)*0.1, np.max(thistau)*1.1)         
+        plt.show()
+
+        self.tau = mastertau
+
         self.spectrumtype='tau'
 
 

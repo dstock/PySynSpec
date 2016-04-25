@@ -87,7 +87,7 @@ def find_chunks(linefreqs, plot=0):
     
     print chunk_sizes
     
-    thresh = 12500000
+    thresh = 1250000
     
     need_subdiv = [x > thresh for x in chunk_sizes]
     print need_subdiv
@@ -156,9 +156,16 @@ def split_chunks(linefreqs, start, end, threshold, level=1):
         
     need_subdiv = [x > threshold for x in chunk_sizes]
     
+    initstarts=starts
+    initends=ends
+    
+    print 'subdiv:'
+    print need_subdiv
 
     if need_subdiv[0] == 1: # & level < 3:
-        subchunks0 = split_chunks(linefreqs, starts[0], ends[0], threshold, level=level+1) 
+        print 'Branch 1'
+        print initstarts[0], initends[0]
+        subchunks0 = split_chunks(linefreqs, initstarts[0], initends[0], threshold, level=level+1) 
         print subchunks0[0], starts
         starts = sorted(starts + [i for i in subchunks0[0] if i not in starts])
         
@@ -166,7 +173,9 @@ def split_chunks(linefreqs, start, end, threshold, level=1):
         ends = sorted(ends + [i for i in subchunks0[1] if i not in ends])
                 
     if need_subdiv[1] == 1: # & level < 3:
-        subchunks0 = split_chunks(linefreqs, starts[0], ends[0], threshold, level=level+1) 
+        print 'Branch 2'
+        print initstarts[1], initends[1]
+        subchunks0 = split_chunks(linefreqs, initstarts[1], initends[1], threshold, level=level+1) 
         print subchunks0[0], starts
         starts = sorted(starts + [i for i in subchunks0[0] if i not in starts])
         

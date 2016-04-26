@@ -44,7 +44,8 @@ class molProps():
                     self.LL = data.dbdata['LL'][i]
                     break
         
-        if molmissing or isomissing: sys.exit("Combination of molecule number and isotopologue number not found in MolTran.txt. ")       
+        if molmissing or isomissing: sys.exit("Combination of molecule number and isotopologue number not found in MolTran.txt. \n"+
+                                              "Tried molno = "+str(molno) + 'isono: '+str(isono))       
                 # The way I have done this very explicitly assumes that there will be precisely ONE match.
 
 class molDB():

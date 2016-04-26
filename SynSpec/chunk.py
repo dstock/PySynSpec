@@ -45,7 +45,7 @@ class chunk():
         """A separate method to calculate the specific line list properties based on an input T."""
         if self.specs_calced == 0:
             #make sure we don't inadvertently try and do this twice
-            if self.ll_name == 'HITRAN04':
+            if self.ll_name == 'HITRAN04' or 'CDSD':
                 self.Temp = Temp
                 self.specs_calced = 1
                 #lets make sure the relevant temperature is now carried around with the linelist.                

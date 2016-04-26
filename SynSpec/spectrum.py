@@ -303,7 +303,7 @@ class Spectrum:
         #infile.close()
         
         
-        if os.path.isfile(filename) == False or regen == True:
+        if os.path.isfile(filename) == False or regen[1] == True:
         
             # First of all we need to restore the chunkinfo file..
             # Or do we? All we would be getting would be the number of chunks and I have appended that to the
@@ -328,7 +328,7 @@ class Spectrum:
                 infile.close()
 
                 if thischunk.outwithgrid == True:
-                    if counter == thischunk.nchunks -1: # -1 because we start at zero.  
+                    if counter == thischunk.nchunks -2: # -1 because we start at zero.  
                         filestoread = False
                     counter = counter + 1
                     continue
@@ -351,8 +351,10 @@ class Spectrum:
                 
                 # we need to add some overlap chunk here.
                 
-                thisfreq = thisgrid[thischunk.gridinds[0]:thischunk.gridinds[1]]
+                thisfreq = thisgrid[thischunk.gridinds[0]-100:thischunk.gridinds[1]+100]
 
+                #print len(thisfreq)
+                #print lines_s
                 ff2d = np.vstack([lines_s]*len(thisfreq))
                 lines2d = np.vstack([lines_w]*len(thisfreq))
                 dnu_2d = np.vstack([lines_deltanu]*len(thisfreq))
@@ -375,7 +377,7 @@ class Spectrum:
                 #print thischunk.wave, len(thischunk.wave)
                
   
-                mastertau[thischunk.gridinds[0]:thischunk.gridinds[1]] = thistau
+                mastertau[thischunk.gridinds[0]-100:thischunk.gridinds[1]+100] = thistau
                 
                                
                 #plt.plot(thiswave, thistau*1.1, 'b', self.grid.wave, mastertau1[::-1], 'r') 
@@ -386,7 +388,7 @@ class Spectrum:
                 #Need to reassemble the chunks into a tau array here.
                 
                 
-                if counter == thischunk.nchunks -1: # -1 because we start at zero.  
+                if counter == thischunk.nchunks -2: # -1 because we start at zero.  
                     filestoread = False
                 
                 # we know the first chunk will always be chunk 0, so we can read it in the loop and then check against the

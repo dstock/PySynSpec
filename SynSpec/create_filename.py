@@ -59,6 +59,7 @@ def create_filename(molno, isono, ll_name, switch, vturb=ss.vturb, want_thermal=
                 sys.exit("CDSD Database contains only CO (molno=2, isono=[1,4]), you tried molno: " + str(molno) +', isono: '+str(isono))
             
             moldata = molProps(molno, isono)
+
             isostring = moldata.isocode
 
             dir = ss.linedir + ll_name + '/'

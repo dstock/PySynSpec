@@ -29,7 +29,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 def getQ(molno, isono, ll_name, Temp):
     moldata = molProps(molno, isono)
 
-    if ll_name == "HITRAN04":
+    if ll_name == "HITRAN04" or ll_name == "CDSD":
         idx_string = moldata.molname+"_"+moldata.isocode
         #print idx_string
         

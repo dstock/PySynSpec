@@ -40,23 +40,27 @@ from spectrum import Spectrum
 
   
 class Template:
-    def __init__(self, molno, isono, Temp, N, regen=False, resolution=ss.resolution, oversample=ss.oversample, ll_name='HITRAN04', v_turb=ss.vturb):
+    def __init__(self, molno, isono, Temp, N, regen=[False,False], resolution=ss.resolution, oversample=ss.oversample, ll_name='HITRAN04', v_turb=ss.vturb):
         #First of all lets see if we have made the requested template before
+        #Regen syntax: [regenerate chunks, regenerate tau]
         filename = create_filename(molno, isono, ll_name, 'template', vturb=v_turb, Temp=Temp, N=N, resolution=resolution)
         
-        if os.path.isfile(filename) == False or regen == True:
+        print regen
+        
+        if (os.path.isfile(filename) == False) or ((regen[0] == True) or (regen[1] == True)):
             #Stuff to (re)generate template
-            data = Spectrum()
             
             #check if this spectrum has been chunked
             
             #chunkinfo filename:
             fname = create_filename(molno, isono, ll_name, "chunkinfo")
             
-            if not os.path.isfile(fname) or regen == 1:
+            if not os.path.isfile(fname) or regen[0] == True:
                 thislinelist = SpecificLineList()
                 thislinelist.readlines(molno, isono, ll_name, regen)
-                           
+
+            data = Spectrum()
+
             data.get_tau_chunks(molno, isono, ll_name, Temp, regen)
             
             data.do_rt(N)
@@ -77,7 +81,9 @@ class Template:
 
 
 
-template = Template(2,1,1010.0, 10**19.0, ll_name='CDSD', regen=True, resolution=120.0)
+templateHT = Template(2,1,1000.0, 10**19.0, ll_name='HITRAN04', regen=[False, False], resolution=1200.0)
+templateCDSD = Template(2,1,1000.0, 10**19.0, ll_name='CDSD', regen=[False,False], resolution=1200.0)
+
 
 
     
@@ -88,10 +94,12 @@ template = Template(2,1,1010.0, 10**19.0, ll_name='CDSD', regen=True, resolution
 
 #plt.plot(template.data.grid.wave, template.data.tau, 'r')#, jan.wave, jan.tau, 'b')#, data.grid.wave, data.smoothednorm, 'g')
 
-plt.plot(template.data.templatewave, template.data.templatenorm)
-
+line1 = plt.plot(templateHT.data.templatewave, templateHT.data.templatenorm, 'b', label='HT04')
+line2 = plt.plot(templateCDSD.data.templatewave, templateCDSD.data.templatenorm, 'r', label='CDSD')
+plt.title('T=1000K, N=10^19')
+plt.legend(loc=4)
 #plt.plot(template.data.tau/jan.tau)
-plt.xlim(0,500)
+plt.xlim(0,20)
 
 plt.show()    
     

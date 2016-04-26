@@ -44,6 +44,7 @@ from getQ import getQ
 from find_chunks import find_chunks
 from chardet.latin1prober import FREQ_CAT_NUM
 from chunk import chunk
+from SynspecSettings import chunkdir
 
 
 c2 = (apc.h.cgs.value*apc.c.cgs.value)/apc.k_B.cgs.value
@@ -194,6 +195,9 @@ class SpecificLineList(LineList):
             filename = create_filename(molno, isono, ll_name, 'linelist')
             # this filename is really a list of n filenames where 2 <= n <= 5. So we have to loop over them and construct the linelist
             
+            # Filename is sorted coming from create_filename
+            # In order to get things in increasing wavelength space we run this backwards
+            filename = filename[::-1] 
             
             #
             #
@@ -204,6 +208,7 @@ class SpecificLineList(LineList):
             # For the sake of providing a template method for larger linelists, we will do the second way even though we might get away with the
             # first in this instance.
             #
+            init_no = 0
             
             for thisfile in filename: # This is a pythonic loop over each element of the filename list
                 # !!!!!!!! In this loop 'thisfile' takes the place of the usual 'filename' !!!!!!!!
@@ -213,15 +218,15 @@ class SpecificLineList(LineList):
                 # Chunk the sublinelist
                 # Pass the number of chunks in this sub-linelist to the next iteration so the chunk numbers are sequential
                 # Update all chunks with final value for nchunks.
-                
-                Qref = getQ(self.mol, self.iso, ll_name, 1000.0)
-                
+                print molno, isono
+                Qref = getQ(molno, isono, ll_name, 1000.0)
+                print Qref
                 
                 #First of all, check THIS file exists
                 if os.path.isfile(thisfile) == False:
                     sys.exit('File not found:'+file)
                 
-                print file
+                print thisfile
                 
                 # This block is the same as in the HITRAN04 bit. In principle it could be abstracted into its own method.
                 # However at the time of writing I'm not sure how much it needs to be change so I have done it this way
@@ -238,7 +243,7 @@ class SpecificLineList(LineList):
                             i+=1
             
                     lines = np.arange(i,dtype=object)
-
+                    print i
             
                     #now loop through and fill the array with lines
                     with open(thisfile) as csvfile:
@@ -246,10 +251,14 @@ class SpecificLineList(LineList):
                         i=0
                         for row in reader:
                             data = row[0]
-                            thisLine = Line( self.spec, self.iso, np.float64(data[4:15]), np.float64('NaN'), strength=np.float64(data[16:25]), epp=np.float64(data[45:55]))
+                            thisLine = Line( molno, isono, np.float64(data[4:15]), np.float64('NaN'), strength=np.float64(data[16:25]), epp=np.float64(data[45:55]))
                             lines[i] = thisLine
                             i+=1
-    
+                            #in future for even bigger linelists, I think you could break here, process what you have so far and continue. In practice
+                            # my 1.8ghz/12gb ram laptop can process 700k+ linelists without exploding or swapping, so I suspect it would only be relevant for the
+                            # really huge linelists.
+                            
+                            
                     outfile = open(thisfile+'.pickle','w')
                     pickle.dump(lines, outfile)
                     outfile.close()
@@ -276,11 +285,51 @@ class SpecificLineList(LineList):
                 #print np.array([x.strength for x in self.lines]) 
                 spec = np.array([x.spec for x in self.lines])
                 iso = np.array([x.iso for x in self.lines])                
-                    
                 
+                if np.var(spec) == 0.0:
+                    self.spec = int(np.median(spec))
+                else:
+                    sys.exit('Trying to construct linelist from multiple species') # Kill it if wrong
+
+                if np.var(iso) == 0.0:
+                    self.iso = int(np.median(iso))
+                else:
+                    sys.exit('Trying to construct linelist from multiple isotopologues') # Kill it if wrong
+                
+                
+                
+                self.create_chunks(init_no=init_no)
+                
+                init_no = init_no + self.nchunks
+                print init_no
+
             
-                sys.exit("CDSD Exit")
     
+            #needs to be a loop in here over all chunks which updates the nchunks attribute of each chunk.
+            # handily this should be contained within init_no after the last file has been chunked.
+            
+            chunkstoupdate = True
+            index = 0
+            
+            while chunkstoupdate:
+                thischunkfilename = create_filename(molno, isono, ll_name, "chunks", chunkID=index)
+                infile = open(thischunkfilename+'.pickle','r')
+                thischunk = pickle.load(infile)
+                infile.close()
+                
+                thischunk.nchunks = init_no
+                
+                outfile = open(thischunkfilename+'.pickle','w')
+                pickle.dump(thischunk, outfile)
+                outfile.close()
+                              
+                index = index+1
+                if index == init_no -1:
+                    chunkstoupdate = False
+            
+            
+            print "done reading CDSD Files and Creating Chunks"
+            
         else:
             print 'other Linelists Not Implemented'             
     
@@ -321,7 +370,10 @@ class SpecificLineList(LineList):
 
                 #print strengths_jan.ff[0]/self.strength[0]
 
-    def create_chunks(self):
+    def create_chunks(self, init_no=0):
+        # init_no is intended to function as the index of the first chunk
+        # This allows us to independently chunk linelists that are stored in
+        # multiple files.
         
         thisfreq = self.freq
                
@@ -331,6 +383,8 @@ class SpecificLineList(LineList):
         ends = chunks[1]
         
         nchunks = len(starts)
+        
+        self.nchunks = nchunks
         
         print "*****************************"
         print starts
@@ -343,8 +397,8 @@ class SpecificLineList(LineList):
         newgrid = grid()
         thisgrid = newgrid.waveum#[::-1]
         
-               
         sumfilename = create_filename(self.spec, self.iso, self.ll_name, "chunkinfo")
+
         summary = open(sumfilename, 'w')
         
         #headerstring = str(format='(A4,4A15,A25,2A15,A25)', "ID", "idx1", "idx2", "wnogridstart", "wnogridend", "ngridpoints", "wnolinestart", "wnolineend", "nlines")
@@ -366,18 +420,18 @@ class SpecificLineList(LineList):
         
         for i in range(0, len(starts)):
             print i
-            fname = create_filename(self.spec, self.iso, self.ll_name, "chunks", chunkID=i)
+            fname = create_filename(self.spec, self.iso, self.ll_name, "chunks", chunkID=i+init_no)
             chunk = self.extract_chunks(starts[i], ends[i], thisgrid, nchunks)
             outfile = open(fname+'.pickle','w')
             pickle.dump(chunk, outfile)
             outfile.close()
         
             if chunk.outwithgrid == 0:
-                summarystring = "{:>4} {:>15} {:>15} {:>15} {:>15} {:>25} {:>15} {:>15} {:>25}".format(i, chunk.gridinds[0], chunk.gridinds[1], 
+                summarystring = "{:>4} {:>15} {:>15} {:>15} {:>15} {:>25} {:>15} {:>15} {:>25}".format(i+init_no, chunk.gridinds[0], chunk.gridinds[1], 
                             newgrid.wno[chunk.gridinds[0]], newgrid.wno[chunk.gridinds[1]], (chunk.gridinds[1]- chunk.gridinds[0]), 
                             self.waveum[starts[i]], self.waveum[ends[i]], ends[i]-starts[i] )+"\n"
             else:
-                summarystring = "{:>4} {:>15} {:>15} {:>15} {:>15} {:>25} {:>15} {:>15} {:>25}".format(i, "NA", "NA", 
+                summarystring = "{:>4} {:>15} {:>15} {:>15} {:>15} {:>25} {:>15} {:>15} {:>25}".format(i+init_no, "NA", "NA", 
                             "NA", "NA", "NA", 
                             self.waveum[starts[i]], self.waveum[ends[i]], ends[i]-starts[i] )+"\n"
             summary.write(summarystring)

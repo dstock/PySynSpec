@@ -29,7 +29,7 @@ import numpy as np
 class chunk():
     def __init__(self, wave, freq, strength, lineinds, gridinds, nchunks, ll_name, spec, iso, outwithgrid, epp):
         self.nchunks = nchunks
-        self.wave = wave
+        self.waveum = wave
         self.freq = freq
         self.strength = strength
         self.lineinds = lineinds
@@ -61,7 +61,7 @@ class chunk():
      
                 E_temp = -1.0 * self.epp * c2 / Temp
                 #print E_temp
-                w_temp = -1.0 * (10000/self.wave) * c2 / Temp
+                w_temp = -1.0 * (10000/self.waveum) * c2 / Temp
                 #print w_temp
                 self.strength = self.strength * (props.abund/ Q) * (np.exp(E_temp) * (1.0-np.exp(w_temp))) * apc.c.cgs.value
         

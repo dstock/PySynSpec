@@ -54,10 +54,9 @@ class Template:
             fname = create_filename(molno, isono, ll_name, "chunkinfo")
             
             if not os.path.isfile(fname) or regen == 1:
-                thislinelist = SpecificLineList(molno, isono, ll_name, regen)
-                #thislinelist.calc_specifics(Temp) #- Want to make a calc_specifics function that can run on the chunks
-                thislinelist.create_chunks()
-            
+                thislinelist = SpecificLineList()
+                thislinelist.readlines(molno, isono, ll_name, regen)
+                           
             data.get_tau_chunks(molno, isono, ll_name, Temp, regen)
             
             data.do_rt(N)
@@ -78,7 +77,7 @@ class Template:
 
 
 
-template = Template(2,1,1010.0, 10**19.0, ll_name='HITRAN04', regen=False, resolution=120.0)
+template = Template(2,1,1010.0, 10**19.0, ll_name='CDSD', regen=True, resolution=120.0)
 
 
     

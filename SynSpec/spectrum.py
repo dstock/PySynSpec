@@ -99,7 +99,7 @@ class Spectrum:
             mastertau = self.grid.flux
             mastertau[:] = 0.0
             
-            delta_nud = thislinelist.wave * vturb * 1e5 
+            delta_nud = thislinelist.wno * vturb * 1e5 
         
             # assume that every incoming linelist is sorted.
             #split spectrum into chunks of say 100 lines
@@ -212,8 +212,8 @@ class Spectrum:
         I_back = Spectrum()
         S_func = Spectrum()
         
-        I_back.grid.flux = B_nu(I_back.grid.wave, 3e3)
-        S_func.grid.flux = B_nu(I_back.grid.wave, self.Temp)
+        I_back.grid.flux = B_nu(I_back.grid.waveum, 3e3)
+        S_func.grid.flux = B_nu(I_back.grid.waveum, self.Temp)
         
         thistau = self.tau*N
         
@@ -244,8 +244,8 @@ class Spectrum:
         #Jans kernel code: (assuming a constant resolution grid..)
         
         # At this stage, we should have at least a grid of constant resolution
-        x = self.grid.wave
-        n= np.size(self.grid.wave)
+        x = self.grid.waveum
+        n= np.size(self.grid.waveum)
 
         # Make the basic convolution kernel. This is the same for all but one
         # method. 
@@ -267,16 +267,16 @@ class Spectrum:
         #plt.show()
         
         filtered = signal.fftconvolve(self.norm, ww, 'same')/sum(ww)
-        print 'new grid size:', np.size(filtered), np.size(self.grid.wave)
+        print 'new grid size:', np.size(filtered), np.size(self.grid.waveum)
         
         self.smoothednorm = filtered
            
         #Signal in 'filtered' matches the line shape produced by IDL code exactly. Also very fast. - Step two
         
-        out_flux = interpolate.griddata(self.grid.wave, filtered, outspec.grid.wave, method='linear')      
-        print 'New grid size:', np.size(out_flux), np.size(outspec.grid.wave) 
+        out_flux = interpolate.griddata(self.grid.waveum, filtered, outspec.grid.waveum, method='linear')      
+        print 'New grid size:', np.size(out_flux), np.size(outspec.grid.waveum) 
         
-        self.templatewave = outspec.grid.wave
+        self.templatewave = outspec.grid.waveum
         self.templatenorm= out_flux
     
         
@@ -342,13 +342,12 @@ class Spectrum:
 
                 print "reading chunk: "+str(counter)
                 print "total chunks: "+str(thischunk.nchunks)
-                print filestoread
 
                 #do some shit to this chunk here
                 
                 lines_s = thischunk.strength
                 lines_w = thischunk.freq
-                lines_deltanu = (10000.0/thischunk.wave) * vturb * 1e5
+                lines_deltanu = (10000.0/thischunk.waveum) * vturb * 1e5
                 
                 # we need to add some overlap chunk here.
                 
@@ -374,8 +373,7 @@ class Spectrum:
                 thistau = np.sum(temp, axis=1)
                 
                 #print thischunk.wave, len(thischunk.wave)
-                print thistau, len(thistau)
-                
+               
   
                 mastertau[thischunk.gridinds[0]:thischunk.gridinds[1]] = thistau
                 
@@ -413,7 +411,7 @@ class Spectrum:
         
         # UPDATE THIS TO SAVE TAU PROFILE ONCE OVERLAPS ADDED.
         
-        plt.plot(self.grid.wave, mastertau, 'b'),#self.grid.wave, mastertau1[::-1], 'r') 
+        plt.plot(self.grid.waveum, mastertau, 'b'),#self.grid.wave, mastertau1[::-1], 'r') 
         plt.xlim(0,200)
         #plt.ylim(np.max(thistau)*0.1, np.max(thistau)*1.1)         
         plt.show()

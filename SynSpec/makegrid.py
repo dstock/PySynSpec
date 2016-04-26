@@ -87,7 +87,8 @@ class grid():
     
         dnu = (apc.c.cgs.value * 1.0e4 * dl) / wave**2
 
-        self.wave = wave # this wave in um
+        self.waveum = wave # this wave in um
+        self.wno = 10000.0/self.waveum
         self.flux = flux
         self.xtitle = xtitle
         self.ytitle = ytitle

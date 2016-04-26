@@ -58,7 +58,7 @@ class LineList:
         iso  = np.array([x.iso for x in lines])
         
         self.freq = np.array([x.freq for x in lines])
-        self.wave = np.array([x.wave for x in lines])
+        self.wno = np.array([x.wave for x in lines])
         self.waveum = np.array([x.waveum for x in lines])
         self.eA =  np.array([x.eA for x in lines])
         self.epp = np.array([x.epp for x in lines])
@@ -83,7 +83,7 @@ class LineList:
     def ll_reverse(self):
         'Linelists normally presented as sorted in wavenumber. We want sorted by um.'
         self.freq = self.freq[::-1]
-        self.wave = self.wave[::-1]
+        self.wno = self.wno[::-1]
         self.waveum = self.waveum[::-1]
         self.eA = self.eA[::-1]
         self.epp = self.epp[::-1]
@@ -99,19 +99,19 @@ class SpecificLineList(LineList):
     #We can write the new init method and leave the old one in place as the second definition
     # of init rebinds the function.
     
-    #def __init__(self):
-    #    self.ll_name = ""
-    #    self.specs_calced = False
-    #    self.wave
-    #    self.freq
-    #    self.epp
-    #    self.eA
-    #    self.iso
-    #    self.spec
-        
+    def __init__(self):
+        self.ll_name = ""
+        self.specs_calced = False
+        self.wno = []
+        self.waveum = []
+        self.freq = []
+        self.epp = []
+        self.eA = []
+        self.iso = []
+        self.spec = 0
+        self.iso = 0
     
-    
-    def __init__(self, molno, isono, ll_name, regen=False):
+    def readlines(self, molno, isono, ll_name, regen=False):
         
         print molno, isono
         self.ll_name = ll_name
@@ -165,13 +165,13 @@ class SpecificLineList(LineList):
             # 
             #
             #
-            self.wave = np.array([x.wave for x in self.lines]) # currently this is actually wno
+            self.wno = np.array([x.wno for x in self.lines]) # currently this is actually wno
             self.waveum = np.array([x.waveum for x in self.lines])
             self.epp = np.array([x.epp for x in self.lines])
             self.eA = np.array([x.eA for x in self.lines])
             self.freq = np.array([x.freq for x in self.lines])
             E_temp = -1.0*self.epp * c2 / 296.0
-            w_temp = -1.0*self.wave * c2 / 296.0
+            w_temp = -1.0*self.wno * c2 / 296.0
             self.strength = np.array([x.strength for x in self.lines]) * (props.Q296/props.abund) / (np.exp(E_temp) * (1.0-np.exp(w_temp)) )
             #print np.array([x.strength for x in self.lines]) 
             spec = np.array([x.spec for x in self.lines])
@@ -188,8 +188,99 @@ class SpecificLineList(LineList):
             else:
                 sys.exit('Trying to construct linelist from multiple isotopologues') # Kill it if wrong
       
-           
-        
+            self.create_chunks()
+      
+        elif ll_name == 'CDSD':
+            filename = create_filename(molno, isono, ll_name, 'linelist')
+            # this filename is really a list of n filenames where 2 <= n <= 5. So we have to loop over them and construct the linelist
+            
+            
+            #
+            #
+            # We have to make some choices here about how to do this. We can either load in each file and add them to one overall linelist
+            # or we could read in each file, make that into a separate linelist, chunk that linelist, then read in the next file, chunk that
+            # and keep track of the overall number of chunks (i.e. make sure the chunk indices make sense.
+            # The second method is probably the most extensible based on the idea that we will eventually use line lists bigger than even CDSD.
+            # For the sake of providing a template method for larger linelists, we will do the second way even though we might get away with the
+            # first in this instance.
+            #
+            
+            for thisfile in filename: # This is a pythonic loop over each element of the filename list
+                # !!!!!!!! In this loop 'thisfile' takes the place of the usual 'filename' !!!!!!!!
+                
+                # Read in the file
+                # Process it into a sub-linelist
+                # Chunk the sublinelist
+                # Pass the number of chunks in this sub-linelist to the next iteration so the chunk numbers are sequential
+                # Update all chunks with final value for nchunks.
+                
+                Qref = getQ(self.mol, self.iso, ll_name, 1000.0)
+                
+                
+                #First of all, check THIS file exists
+                if os.path.isfile(thisfile) == False:
+                    sys.exit('File not found:'+file)
+                
+                print file
+                
+                # This block is the same as in the HITRAN04 bit. In principle it could be abstracted into its own method.
+                # However at the time of writing I'm not sure how much it needs to be change so I have done it this way
+                # Possible todo: abstract this into 'filereader' function.
+                
+                #For each linelist we check if we already read and pickled it.
+                if os.path.isfile(thisfile+'.pickle') == False or regen==True:  # Here I am checking whether we already have an object for this linelist.
+                    #read in the file - first find number of rows
+                    with open(thisfile) as csvfile:
+                        reader = csv.reader(csvfile)
+                        i=0
+                        for row in reader:
+                            #print i
+                            i+=1
+            
+                    lines = np.arange(i,dtype=object)
+
+            
+                    #now loop through and fill the array with lines
+                    with open(thisfile) as csvfile:
+                        reader = csv.reader(csvfile)
+                        i=0
+                        for row in reader:
+                            data = row[0]
+                            thisLine = Line( self.spec, self.iso, np.float64(data[4:15]), np.float64('NaN'), strength=np.float64(data[16:25]), epp=np.float64(data[45:55]))
+                            lines[i] = thisLine
+                            i+=1
+    
+                    outfile = open(thisfile+'.pickle','w')
+                    pickle.dump(lines, outfile)
+                    outfile.close()
+                else:
+                    infile = open(thisfile+'.pickle','r') #Can only get to this block if the .pickle file exists. Restore it, its faster.
+                    lines = pickle.load(infile)
+                    infile.close()                
+                
+
+                #
+                #
+                self.lines = lines[::-1] # Trying to call attention to this line, where I explicitly reverse the linelist to make it go with increasing lambda.
+                # 
+                #
+                #
+                self.wno = np.array([x.wno for x in self.lines]) # currently this is actually wno
+                self.waveum = np.array([x.waveum for x in self.lines])
+                self.epp = np.array([x.epp for x in self.lines])
+                self.eA = np.array([x.eA for x in self.lines])
+                self.freq = np.array([x.freq for x in self.lines])
+                E_temp = -1.0*self.epp * c2 / 1000.0
+                w_temp = -1.0*self.wno * c2 / 1000.0
+                self.strength = np.array([x.strength for x in self.lines]) * (Qref/props.abund) / (np.exp(E_temp) * (1.0-np.exp(w_temp)) )
+                #print np.array([x.strength for x in self.lines]) 
+                spec = np.array([x.spec for x in self.lines])
+                iso = np.array([x.iso for x in self.lines])                
+                    
+                
+            
+                sys.exit("CDSD Exit")
+    
         else:
             print 'other Linelists Not Implemented'             
     
@@ -214,7 +305,7 @@ class SpecificLineList(LineList):
      
                 E_temp = -1.0 * self.epp * c2 / Temp
                 #print E_temp
-                w_temp = -1.0 * self.wave * c2 / Temp
+                w_temp = -1.0 * self.wno * c2 / Temp
                 #print w_temp
                 self.strength = self.strength * (props.abund/ Q) * (np.exp(E_temp) * (1.0-np.exp(w_temp))) * apc.c.cgs.value
                 #I have no idea why Jan multiplies by C here, but he does, so lets copy it.
@@ -250,7 +341,7 @@ class SpecificLineList(LineList):
          
         
         newgrid = grid()
-        thisgrid = newgrid.wave#[::-1]
+        thisgrid = newgrid.waveum#[::-1]
         
                
         sumfilename = create_filename(self.spec, self.iso, self.ll_name, "chunkinfo")
@@ -276,14 +367,14 @@ class SpecificLineList(LineList):
         for i in range(0, len(starts)):
             print i
             fname = create_filename(self.spec, self.iso, self.ll_name, "chunks", chunkID=i)
-            chunk = self.extract(starts[i], ends[i], thisgrid, nchunks)
+            chunk = self.extract_chunks(starts[i], ends[i], thisgrid, nchunks)
             outfile = open(fname+'.pickle','w')
             pickle.dump(chunk, outfile)
             outfile.close()
         
             if chunk.outwithgrid == 0:
                 summarystring = "{:>4} {:>15} {:>15} {:>15} {:>15} {:>25} {:>15} {:>15} {:>25}".format(i, chunk.gridinds[0], chunk.gridinds[1], 
-                            newgrid.wave[chunk.gridinds[0]], newgrid.wave[chunk.gridinds[1]], (chunk.gridinds[1]- chunk.gridinds[0]), 
+                            newgrid.wno[chunk.gridinds[0]], newgrid.wno[chunk.gridinds[1]], (chunk.gridinds[1]- chunk.gridinds[0]), 
                             self.waveum[starts[i]], self.waveum[ends[i]], ends[i]-starts[i] )+"\n"
             else:
                 summarystring = "{:>4} {:>15} {:>15} {:>15} {:>15} {:>25} {:>15} {:>15} {:>25}".format(i, "NA", "NA", 
@@ -299,7 +390,7 @@ class SpecificLineList(LineList):
 
 
 
-    def extract(self, start, end, grid, nchunks):
+    def extract_chunks(self, start, end, grid, nchunks):
         
         #Need to make something here which makes `grid' into just a section of the wavegrid which 
         # corresponds to the given chunk of lines.
@@ -307,14 +398,8 @@ class SpecificLineList(LineList):
         
         if len(mask[0]) == 0:
             outwithgrid = True
-            print 'are we in this block?'
             gridinds = [float('NaN'),float('NaN')]
         else:    
-            print start, end
-            print self.waveum[start], self.waveum[end]
-            print mask
-            print 'no we\'re in this block'
-            print mask[0][0], mask[0][-1]
             gridinds = [mask[0][0], mask[0][-1]]
             outwithgrid = False
         

@@ -25,7 +25,7 @@ import sys
 import SynspecSettings as ss
 from molDB import molProps
 from fileinput import filename
-
+import glob
 
 
 def create_filename(molno, isono, ll_name, switch, vturb=ss.vturb, want_thermal=0, 
@@ -50,7 +50,23 @@ def create_filename(molno, isono, ll_name, switch, vturb=ss.vturb, want_thermal=
 
         if ll_name == 'HITRAN12':
             print 'not implemented yet'
+        
+        if ll_name == 'CDSD':
+            #There's more than one file per isotope here !!
+            # But its all CO
+            # So check
+            if molno != 2 or ((isono > 4) or (isono < 1)):
+                sys.exit("CDSD Database contains only CO (molno=2, isono=[1,4]), you tried molno: " + str(molno) +', isono: '+str(isono))
+            
+            moldata = molProps(molno, isono)
+            isostring = moldata.isocode
 
+            dir = ss.linedir + ll_name + '/'
+            fnames = glob.glob(dir+isostring+'*'+'.cdsd')
+            fnames = sorted(fnames)
+            
+            filename = fnames
+            # WARNING: because of the way CDSD works this is actually an array (really a list) of filenames with length between 2 and 6.
         
     if switch == 'tau' or switch == 'template':
         moldata = molProps(molno, isono)

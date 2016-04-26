@@ -36,7 +36,7 @@ class Line:
     def __init__(self, species, iso, wave, eA, epp=0, strength=0): #will add many more, also type checking
         self.spec = species
         self.iso = iso
-        self.wave = wave # currently in wno, add um
+        self.wno = wave # currently in wno, add um
         self.waveum = 10000.0/wave
         self.eA = eA
         self.freq = apc.c.cgs.value * 1e4 / self.waveum
